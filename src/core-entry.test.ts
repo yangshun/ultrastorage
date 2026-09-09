@@ -22,6 +22,16 @@ describe('greatstorage/core', () => {
     expect(storage.getItem('key')).toEqual({ hello: 'world' });
   });
 
+  it('rejects successfully parsed foreign data without removing it', () => {
+    const storage = createStorage({ storage: mockStorage, serializer: jsonSerializer });
+    const raw = JSON.stringify({ value: 'foreign', version: 1, expiry: null });
+    mockStorage.setItem('key', raw);
+
+    expect(storage.has('key')).toBe(false);
+    expect(storage.getItem('key')).toBeNull();
+    expect(mockStorage.getItem('key')).toBe(raw);
+  });
+
   it('uses the provided serializer for writing', () => {
     const calls: unknown[] = [];
     const storage = createStorage({

@@ -21,6 +21,21 @@ describe('greatstorage', () => {
     expectTypeOf<GreatStorage>().toMatchTypeOf<Storage>();
   });
 
+  it('uses the browser localStorage backend when none is provided', () => {
+    vi.stubGlobal('localStorage', mockStorage);
+    try {
+      const defaultStorage = createStorage();
+      defaultStorage.setItem('name', 'Alice');
+      expect(storage.getItem('name')).toBe('Alice');
+      storage.setItem('name', 'Bob');
+      expect(defaultStorage.getItem('name')).toBe('Bob');
+      defaultStorage.removeItem('name');
+      expect(mockStorage.getItem('name')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   describe('set and get', () => {
     it('stores and retrieves a string', () => {
       storage.setItem('name', 'Alice');
@@ -143,6 +158,18 @@ describe('greatstorage', () => {
   });
 
   describe('clear', () => {
+    it('continues clearing when a listed value is no longer available', () => {
+      storage.setItem('missing', 1);
+      storage.setItem('remaining', 2);
+      // Model a backend whose listed key has no readable value during enumeration.
+      vi.spyOn(mockStorage, 'getItem').mockReturnValueOnce(null);
+
+      storage.clear();
+
+      expect(storage.getItem('remaining')).toBeNull();
+      expect(storage.getItem('missing')).toBe(1);
+    });
+
     it('removes all greatstorage keys', () => {
       storage.setItem('a', 1);
       storage.setItem('b', 2);
@@ -215,6 +242,15 @@ describe('greatstorage', () => {
   });
 
   describe('length', () => {
+    it('skips unavailable backend keys and continues counting readable entries', () => {
+      storage.setItem('missing', 1);
+      storage.setItem('remaining', 2);
+      vi.spyOn(mockStorage, 'key').mockReturnValueOnce(null);
+
+      expect(storage.length).toBe(1);
+      expect(storage.getItem('remaining')).toBe(2);
+    });
+
     it('returns 0 when empty', () => {
       expect(storage.length).toBe(0);
     });
