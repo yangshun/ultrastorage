@@ -1,3 +1,6 @@
+import { decodeEntry, isStorageEntry, validateEntry } from './entry';
+import type { StorageEntryEnvelope } from './entry';
+import { registerSnapshotAccess } from './snapshots';
 import { batchNotifications, hasSubscribers, notify, subscribe } from './subscriptions';
 import type {
   CoreStorageOptions,
@@ -13,31 +16,15 @@ declare const process: { env: { NODE_ENV?: string } };
 const ENTRY_MARKER = '__gs';
 const warned = process.env.NODE_ENV !== 'production' ? new Set<string>() : undefined;
 
-interface StorageEntryEnvelope {
-  [key: string]: unknown;
-  value: unknown;
-  version: number;
-  expiry: number | null;
-}
-
-function isStorageEntry(data: unknown): data is StorageEntryEnvelope {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    ENTRY_MARKER in data &&
-    (data as Record<string, unknown>)[ENTRY_MARKER] === true &&
-    'value' in data &&
-    'version' in data &&
-    'expiry' in data
-  );
-}
-
 // Implemented as a closure factory rather than a class so that internal helpers
 // (forEachEntry, removeEntries, serializer, etc.) are truly private, destructuring
 // works without `this`-binding issues, and the return type is a plain object that
 // is easy to mock in tests.
 export function createStorage(options: CoreStorageOptions): GreatStorage {
-  const storage = options.storage ?? localStorage;
+  let backend = options.storage;
+  function getBackend(): Storage {
+    return (backend ??= localStorage);
+  }
   const separator = options.separator ?? ':';
   const prefix = options.prefix ? options.prefix + separator : '';
   const serializer = options.serializer;
@@ -46,34 +33,10 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
     return prefix + key;
   }
 
-  // Reading and decoding do not clean up storage or emit notifications. A future
-  // snapshot adapter can build on this path without performing writes during reads.
+  // Decoding is shared with snapshot readers; expiration cleanup belongs only
+  // to the public read path below.
   function readEntry(key: string): StorageEntryEnvelope | null {
-    const raw = storage.getItem(prefixedKey(key));
-    if (raw === null) {
-      return null;
-    }
-
-    let entry: unknown;
-    try {
-      entry = serializer.parse(raw);
-    } catch {
-      // Unrecognized format — try JSON.parse for backwards compatibility
-      try {
-        entry = JSON.parse(raw);
-      } catch {
-        // Raw string that isn't valid JSON — return null to avoid confusion, since Storage always returns null for missing keys
-        return null;
-      }
-    }
-
-    if (!isStorageEntry(entry)) {
-      // Only return values that were created by greatstorage (has the entry marker).
-      // This allows greatstorage to coexist with other data in the same storage.
-      return null;
-    }
-
-    return entry;
+    return decodeEntry(getBackend().getItem(prefixedKey(key)), serializer);
   }
 
   function getItem<T = unknown>(key: string, options?: GetOptions<T>): T | null {
@@ -87,23 +50,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
       return null;
     }
 
-    if (options?.schema) {
-      const result = options.schema['~standard'].validate(entry.value);
-
-      if (result instanceof Promise) {
-        throw new TypeError(
-          'Schema validation must be synchronous. Async schemas are not supported.',
-        );
-      }
-
-      if ('issues' in result) {
-        return null;
-      }
-
-      return result.value as T;
-    }
-
-    return entry.value as T;
+    return validateEntry<T>(entry, options?.schema);
   }
 
   function resolveExpiry(options?: StorageOptions): number | null {
@@ -149,11 +96,11 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
     };
     const rawKey = prefixedKey(key);
     const raw = serializer.stringify(entry);
-    const observed = hasSubscribers(storage, rawKey);
-    const previous = observed ? storage.getItem(rawKey) : null;
-    storage.setItem(rawKey, raw);
+    const observed = hasSubscribers(getBackend(), rawKey);
+    const previous = observed ? getBackend().getItem(rawKey) : null;
+    getBackend().setItem(rawKey, raw);
     if (observed && previous !== raw) {
-      notify(storage, rawKey, 'set');
+      notify(getBackend(), rawKey, 'set');
     }
   }
 
@@ -194,16 +141,16 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
   }
 
   function removeStoredItem(rawKey: string, type: StorageChange['type']): void {
-    const previous = hasSubscribers(storage, rawKey) ? storage.getItem(rawKey) : null;
-    storage.removeItem(rawKey);
+    const previous = hasSubscribers(getBackend(), rawKey) ? getBackend().getItem(rawKey) : null;
+    getBackend().removeItem(rawKey);
     if (previous !== null) {
-      notify(storage, rawKey, type);
+      notify(getBackend(), rawKey, type);
     }
   }
 
   function* entries(): Generator<[key: string, entry: StorageEntryEnvelope]> {
-    for (let i = 0; i < storage.length; i++) {
-      const key = storage.key(i);
+    for (let i = 0; i < getBackend().length; i++) {
+      const key = getBackend().key(i);
       if (key === null) {
         continue;
       }
@@ -212,7 +159,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
         continue;
       }
 
-      const raw = storage.getItem(key);
+      const raw = getBackend().getItem(key);
       if (raw === null) {
         continue;
       }
@@ -256,7 +203,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
   }
 
   function has(key: string): boolean {
-    const raw = storage.getItem(prefixedKey(key));
+    const raw = getBackend().getItem(prefixedKey(key));
 
     if (raw === null) {
       return false;
@@ -293,7 +240,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
 
   const api = {
     subscribe: (key: string, listener: StorageListener) =>
-      subscribe(storage, prefixedKey(key), key, listener),
+      subscribe(getBackend(), prefixedKey(key), key, listener),
     get length() {
       let count = 0;
       for (const [, entry] of entries()) {
@@ -314,5 +261,9 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
     has,
   } satisfies GreatStorage;
 
+  registerSnapshotAccess(api, {
+    readRaw: (key) => getBackend().getItem(prefixedKey(key)),
+    serializer,
+  });
   return api;
 }

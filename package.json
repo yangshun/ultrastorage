@@ -37,6 +37,16 @@
         "types": "./dist/core-entry.d.cts",
         "default": "./dist/core-entry.cjs"
       }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react.d.mts",
+        "default": "./dist/react.mjs"
+      },
+      "require": {
+        "types": "./dist/react.d.cts",
+        "default": "./dist/react.cjs"
+      }
     }
   },
   "scripts": {
@@ -48,16 +58,36 @@
     "tc": "vp check",
     "test": "vp test run",
     "test:watch": "vp test",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
     "devalue": "^5"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitest/coverage-v8": "4.1.11",
+    "jsdom": "^30.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "typescript": "^7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@types/react": "^18.0.0 || ^19.0.0",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    }
   },
   "packageManager": "pnpm@10.30.3"
 }

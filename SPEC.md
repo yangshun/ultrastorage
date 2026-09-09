@@ -90,7 +90,7 @@ storage.setItem('theme', 'dark');
 unsubscribe();
 ```
 
-- Both package entry points export `StorageChange` (readonly fields) and `StorageListener`. Events carry no old/new values; reads return current state, which may include a subsequent write.
+- The main and core package entry points export `StorageChange` (readonly fields) and `StorageListener`. Events carry no old/new values; reads return current state, which may include a subsequent write.
 - All instances sharing a backend object and fully prefixed key share notifications. Writers do not need to subscribe. Local delivery is synchronous after mutation; reentrant mutations queue notifications in FIFO order. Listener exceptions are reported and do not interrupt other listeners or fail completed writes.
 - Successful writes emit `set`; existing-key removals emit `remove`. Helpers use their underlying read/write notifications. Identical serialized writes, missing-key removals, and failed mutations do not notify. Expiry metadata is part of equality.
 - `clear()` emits `remove` per affected subscribed key. Bulk removals complete before delivery; a partial failure still notifies completed removals and preserves the storage error.
@@ -98,7 +98,21 @@ unsubscribe();
 - Browser storage events are filtered by storage area and exact key. External writes and deletions emit `set` and `remove`; native clears invalidate all subscribed keys for that backend. External deletion causes cannot be distinguished. Events are never written back to storage.
 - Subscriptions describe storage changes, not schema validity. A matching external write can notify even if the stored data is foreign or invalid. Direct backend writes in the same page are not observed.
 - Listener state and browser listeners are created lazily and released on unsubscribe. Non-browser memory/custom backends do not require browser globals. Coordination across separate copies of the library or mixed ESM/CJS runtimes is not supported.
-- Internal entry reads are separated from cleanup to support future snapshot work. Existing `getItem()` still returns fresh objects and removes expired data. Public snapshots, React integration, and namespace-wide subscriptions are deferred.
+- Internal decoding and schema validation are shared with side-effect-free snapshot readers. Existing `getItem()` still returns fresh objects and removes expired data. Public snapshots and namespace-wide subscriptions remain out of scope.
+
+## React adapter
+
+- Publish `useStorage(storage, key, options?)` and `createStorageHook(storage)` from `greatstorage/react` in the same package. The factory returns an equivalent bound hook. Support React 18/19 as optional peers, with separate ESM/CJS outputs and declarations and a React-only `use client` boundary. Main/core do not import React or its types.
+- Return a readonly `[value, setValue, removeValue]` tuple. Options are `defaultValue` and synchronous Standard Schema `schema`; infer schema output, default, or explicit generic types. Without a default, values and updater inputs include `null`.
+- A read returning null uses the display-only default or null. This includes missing, expired, foreign, parse-invalid, schema-invalid, and stored-null entries. Omitted or undefined defaults use null; preserve valid stored undefined. Defaults are per consumer and are never validated or persisted. A non-null, non-undefined default removes null from the result type even for nullable schemas.
+- Setters accept a value or updater plus existing per-write expiration options. Updaters read the current backend, validate, and apply the fallback; writes accept schema output types without write validation. Removal restores the fallback. Failed operations throw and do not optimistically alter hook state. Updaters are not transactions across tabs.
+- Use `useSyncExternalStore` and existing subscriptions. Stable callbacks track the latest committed options. Key/instance changes replace subscriptions; unmount and Strict Mode cleanup release them.
+- A private WeakMap bridge registers factory-created instances and creates framework-independent snapshot readers lazily. Each reader caches decoded entries by raw bytes, rechecks the backend and time, and never mutates storage. Unsupported instances throw. Readers are owned by consumers, avoiding an unbounded global key cache.
+- Keep schema projection/defaults outside external snapshot identity to tolerate inline options. Revalidate when snapshot or schema identity changes. Unchanged snapshots preserve object identity; consumers must treat rich values as immutable. Core reads retain fresh-object behavior.
+- No expiration timers: time passing alone does not schedule React. Later snapshot reads can hide expiration; public cleanup still emits expiry events. Direct backend writes schedule no same-page render, but later reads observe them.
+- Resolve default localStorage lazily on first operation, retaining the resolved backend. No implicit memory fallback. Construction is SSR-safe; ordinary operations still require a backend.
+- Server and hydration snapshots always use matching user-supplied defaults (or null), even with memory backends, without reading storage. Read actual storage after hydration. No automatic server-data transfer.
+- Keep the bridge and registry shared across main/core/react within each format. Separately loaded copies and mixed ESM/CJS coordination remain unsupported. No storage migration, provider, selector, public snapshot API, or readonly-only hook.
 
 ## Design decisions
 

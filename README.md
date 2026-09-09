@@ -8,6 +8,7 @@ Gives `localStorage` superpowers. Handles serialization of rich types, key expir
 - **TTL / expiration**: Set a `ttl` in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing, can be removed on `getItem()`, and can be swept with `clearExpired()`
 - **Namespacing**: Isolate keys with a configurable `prefix` and `separator`
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
+- **React hooks**: Optional [`greatstorage/react` adapter](#react) with typed values, functional updates, and server rendering
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
 - **Use any `Storage` backend**: Works with `localStorage`, `sessionStorage`, or any `Storage`-compatible implementation. An in-memory storage implementation is provided as well
 - **ESM and CJS**: Tree-shakeable dual builds with full TypeScript types
@@ -373,6 +374,131 @@ Expired entries are excluded from the count but not removed unless read via `get
 
 Returns an in-memory `Storage` implementation. Useful for tests or server-side usage.
 
+## React
+
+React 18 and 19 are supported through the `greatstorage/react` entry point in the same package. React and its types are optional peers: applications using only the main or core entry point do not need React installed.
+
+In an existing React application, install `greatstorage` and import the adapter from `greatstorage/react`. There is no separate adapter package to install.
+
+### `createStorageHook(storage): StorageHook`
+
+Bind a GreatStorage instance once, then call the returned hook with a key and optional read options. The bound hook uses that instance's backend, prefix, separator, and serializer. Create it outside components; no provider is required.
+
+```tsx
+// preferences.ts — create instances and bound hooks outside components
+import { createStorage } from 'greatstorage';
+import { createStorageHook } from 'greatstorage/react';
+
+export const preferences = createStorage({ prefix: 'app' });
+export const usePreferences = createStorageHook(preferences);
+```
+
+```tsx
+// ThemePicker.tsx — use a Client Component in an RSC framework
+'use client';
+import { usePreferences } from './preferences';
+
+export function ThemePicker() {
+  const [theme, setTheme, removeTheme] = usePreferences('theme', {
+    defaultValue: 'light',
+  });
+
+  return (
+    <>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>Theme: {theme}</button>
+      <button onClick={removeTheme}>Reset</button>
+    </>
+  );
+}
+```
+
+Components using the same key respond to writes through the hook, ordinary GreatStorage methods, other instances sharing the backend, and browser storage events from other tabs.
+
+For a component that only displays a value, destructure the first tuple item:
+
+```tsx
+import { usePreferences } from './preferences';
+
+export function CurrentTheme() {
+  const [theme] = usePreferences('theme', { defaultValue: 'light' });
+  return <p>Current theme: {theme}</p>;
+}
+```
+
+Mounting `ThemePicker` and `CurrentTheme` anywhere in the same app keeps both in sync. Calling `preferences.setItem('theme', 'dark')` outside React also updates them. Defaults belong to each hook call: two consumers can display different defaults while the key is absent, so reuse the same default when they should agree.
+
+### `useStorage(storage, key, options?)`
+
+The direct hook is equivalent to a bound hook:
+
+```tsx
+import { useStorage } from 'greatstorage/react';
+import { preferences } from './preferences';
+
+function Counter() {
+  const [count, setCount, removeCount] = useStorage<number>(preferences, 'count', {
+    defaultValue: 0,
+  });
+  return (
+    <>
+      <button onClick={() => setCount((previous) => previous + 1)}>Count: {count}</button>
+      <button onClick={() => setCount(0, { ttl: 60_000 })}>Reset for one minute</button>
+      <button onClick={removeCount}>Remove</button>
+    </>
+  );
+}
+```
+
+Both hooks return a readonly `[value, setValue, removeValue]` tuple. `setValue(valueOrUpdater, storageOptions?)` accepts the existing `ttl` or `expiresAt` options; omitted expiration options write a non-expiring entry. Functional updates read the latest persisted value, apply schema validation and the fallback, then write the result. They are synchronous but are not atomic across tabs. `removeValue()` removes the entry and restores the displayed default.
+
+| Option         | Behavior                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `defaultValue` | Display-only fallback when the read returns `null`; never automatically written. An omitted or `undefined` default uses `null`. |
+| `schema`       | Synchronous Standard Schema validation and transformation, matching `getItem()`. Infer the value type from its output.          |
+
+Missing, expired, foreign, unparseable, invalid, and stored-null values use the fallback. Valid stored `undefined` remains `undefined`. A non-null default removes `null` from the inferred value and updater input types. Defaults should match the schema output type; defaults themselves are not validated. Setter input uses that same output type, and writes are not schema-validated.
+
+Setter and remover identities remain stable while the storage instance and key stay the same. Changes to hook options apply after commit; switching instances or keys switches subscriptions. Use factory-created GreatStorage instances from `greatstorage` or `greatstorage/core`; structural mocks or independently loaded package copies are not supported by the private snapshot bridge. For tests, wrap `createMemoryStorage()` with `createStorage()`.
+
+### Schema validation and types
+
+Use any synchronous Standard Schema implementation. For example, if your app uses Zod:
+
+```tsx
+import { z } from 'zod';
+import { usePreferences } from './preferences';
+
+const UserSchema = z.object({ name: z.string(), age: z.number() });
+
+export function Profile() {
+  const [user, setUser, removeUser] = usePreferences('user', { schema: UserSchema });
+  // user: { name: string; age: number } | null
+  return (
+    <>
+      <p>{user?.name ?? 'No profile saved'}</p>
+      <button onClick={() => setUser({ name: 'Alice', age: 30 })}>Save profile</button>
+      <button onClick={removeUser}>Remove profile</button>
+    </>
+  );
+}
+```
+
+The schema determines the value and setter types. Without a schema, provide a generic such as `usePreferences<User>('user')` or let a default infer the type. Generics provide compile-time types only; schemas also validate the stored data at runtime. A non-null, non-undefined default removes `null` even when the schema itself accepts null. Schema transformations apply before rendering and before a functional updater receives its input.
+
+### Snapshots and expiration
+
+Hook values retain object identity while their stored representation and schema stay unchanged. Treat returned objects as immutable, including Maps, Sets, and Dates. Return replacement values from updaters (for example, `previous => new Set([...previous, 'new'])`) instead of mutating the previous value. No deep freeze is applied. Inline schemas and object defaults are supported, but recreating them can change projected value identity.
+
+Rendering never deletes expired entries or writes defaults. There are no expiration timers: a mounted component is not scheduled to render just because time passes. A subsequent snapshot read recognizes expiration; `getItem()` or `clearExpired()` performs actual cleanup and notifies listeners. A direct backend write schedules no same-page render, although a later snapshot read can observe it.
+
+### Server rendering and errors
+
+`createStorage()` defers access to the default `localStorage` until an operation needs it, so module-level construction is safe on the server. The hooks render the default (or `null`) on the server and during initial hydration without reading any backend, including explicit memory backends. They switch to persisted browser data after hydration. Provide matching defaults on the server and client; there is no automatic server-data transfer. Only instance construction is safe without a backend: calling ordinary storage methods still requires an available backend.
+
+Storage access, quota, serialization-on-write, updater, and thrown schema errors propagate. Async schemas throw. Validation failures reported as schema issues use the fallback. There is no optimistic update or silent fallback to memory after a failed write or inaccessible browser storage. Render-time errors can be handled by a React error boundary; handle setter errors in the calling event handler.
+
+The adapter exports `UseStorageOptions`, `UseStorageResult`, `StorageSetter`, and `StorageHook` types. It does not add a provider, public snapshot API, selector, or `useStorageValue` hook.
+
 ## How it works (longer version)
 
 `greatstorage` is intentionally small. Under the hood, it's a thin wrapper around a `Storage` instance (e.g. `localStorage` / `sessionStorage`) that serializes your value together with a bit of metadata, then gives you a nicer API for reading it back safely.
@@ -416,7 +542,7 @@ So `getItem({ schema })` validates the retrieved value right before your app use
 ## Caveats
 
 - **Same-page writes must go through GreatStorage to notify**: Direct backend writes do not emit same-page notifications. Cross-tab browser events are still observed. Coordination is limited to instances sharing one loaded library runtime; separately bundled copies and mixed ESM/CJS runtimes do not share a registry.
-- **Subscriptions are not React snapshots**: `getItem()` still returns freshly deserialized objects and can remove expired entries. A future React adapter will need a cached, side-effect-free snapshot read; this release does not include a React hook or snapshot API.
+- **Use the React adapter for rendering**: `getItem()` returns fresh objects and can delete expired entries. `greatstorage/react` supplies cached, side-effect-free snapshots internally; no public snapshot API is exposed.
 - **Still synchronous storage**: This wraps `localStorage`-style APIs, so reads and writes are still synchronous and still subject to browser storage quotas.
 - **Changing serializers can strand old entries**: `getItem()` has a JSON fallback, but enumeration-based APIs like `clear()`, `clearExpired()`, `key()`, and `length` depend on the current serializer being able to parse old values. If you ever need to change serializers, we recommend changing the `prefix` and using a new namespace.
 - **Expired entries are cleaned up lazily**: Expired data is hidden from reads immediately, but it may still occupy storage until `getItem()` touches it or `clearExpired()` is called.
@@ -442,7 +568,8 @@ This project uses [Vite+](https://viteplus.dev/guide/) with the Node.js version 
 ```sh
 vp install
 vp check
-vp test
+vp test run
+vp run test:coverage # enforces 100% runtime coverage
 vp pack
 ```
 

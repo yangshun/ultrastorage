@@ -145,7 +145,7 @@ export interface CreateStorageOptions {
   separator?: string;
 
   /**
-   * The underlying Storage backend. Defaults to `localStorage`.
+   * The underlying Storage backend. Defaults to `localStorage`, resolved on first use.
    */
   storage?: Storage;
 

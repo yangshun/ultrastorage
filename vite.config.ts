@@ -5,11 +5,21 @@ export default defineConfig({
     '*': 'vp check --fix',
   },
   pack: {
-    deps: { resolveDepSubpath: true },
-    entry: ['src/index.ts', 'src/core-entry.ts'],
+    deps: { resolveDepSubpath: true, neverBundle: ['react'] },
+    entry: ['src/index.ts', 'src/core-entry.ts', 'src/react.ts'],
     format: ['cjs', 'esm'],
     dts: true,
     clean: true,
+  },
+  test: {
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/types.ts'],
+      reporter: ['text', 'html', 'json', 'json-summary'],
+      skipFull: false,
+      thresholds: { 100: true, perFile: true },
+    },
   },
   lint: {
     jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
