@@ -39,6 +39,24 @@ Each page starts with `title` and `description` frontmatter. Begin the body with
 
 Configure a static host to install development dependencies, run `vp run docs:build`, and publish `docs/dist`. The repository pins its Node and package-manager versions. Install Vite+ on the build host, or run the underlying `blume build` command from `docs/` with the package manager's script environment.
 
-Blume can infer the production site URL on supported hosts. Set `deployment.site` in `docs/blume.config.ts` when a canonical domain is known. For a project hosted below a URL path, also set `deployment.base`. No deployment domain is assumed by this repository.
+The production site URL is `https://ultrastorage.dev`, configured through `deployment.site` in `docs/blume.config.ts`. For a project hosted below a URL path, also set `deployment.base`.
 
 See the [Blume deployment guide](https://useblume.dev/docs/deployment) for host-specific settings, and the [package spec](https://github.com/yangshun/ultrastorage/blob/main/SPEC.md) and [changelog](https://github.com/yangshun/ultrastorage/blob/main/CHANGELOG.md) for design and release notes.
+
+### Cloudflare Workers
+
+The root `wrangler.jsonc` configures the `ultrastorage` Worker to serve `docs/dist` as static assets. Configure the connected Git repository in Cloudflare Workers Builds with these settings:
+
+| Setting                | Value                          |
+| ---------------------- | ------------------------------ |
+| Worker name            | `ultrastorage`                 |
+| Production branch      | `main`                         |
+| Root directory         | Repository root                |
+| Build command          | `pnpm run docs:build`          |
+| Deploy command         | `npx wrangler deploy`          |
+| Preview deploy command | `npx wrangler versions upload` |
+| Build variable         | `PNPM_VERSION=10.30.3`         |
+
+Leave automatic dependency installation enabled, including development dependencies. Cloudflare reads the Node version from `.node-version`.
+
+The configured `deployment.site` supplies the production URL for canonical links and the sitemap. Blume's automatic Cloudflare site URL detection targets Pages, so Workers deployments need an explicit URL. Add `ultrastorage.dev` as a custom domain in the Worker's Domains & Routes settings.

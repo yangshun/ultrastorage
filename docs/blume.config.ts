@@ -45,5 +45,5 @@ export default defineConfig({
   },
   search: { provider: 'orama' },
   ai: { llmsTxt: true },
-  deployment: { output: 'static' },
+  deployment: { output: 'static', site: 'https://ultrastorage.dev' },
 });
