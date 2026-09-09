@@ -59,7 +59,11 @@
     "test": "vp test run",
     "test:watch": "vp test",
     "prepare": "vp config",
-    "test:coverage": "vp test run --coverage"
+    "test:coverage": "vp test run --coverage",
+    "docs:dev": "cd docs && blume dev",
+    "docs:build": "cd docs && blume build",
+    "docs:preview": "cd docs && blume preview",
+    "docs:validate": "cd docs && blume validate --strict"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
@@ -70,6 +74,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitest/coverage-v8": "4.1.11",
+    "blume": "^1.6.3",
     "jsdom": "^30.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
