@@ -75,10 +75,36 @@ const customStorage = createStorage({
 });
 ```
 
+## Subscriptions
+
+`storage.subscribe(key, listener)` observes a single key relative to the instance prefix. It returns an idempotent unsubscribe function, and each registration is independent. Registration does not invoke the listener immediately.
+
+```ts
+const unsubscribe = storage.subscribe('theme', (change) => {
+  // change: { key: string; type: 'set' | 'remove' | 'expire'; source: 'local' | 'external' }
+  const currentTheme = storage.getItem<string>('theme');
+  console.log(change.type, currentTheme);
+});
+
+storage.setItem('theme', 'dark');
+unsubscribe();
+```
+
+- Both package entry points export `StorageChange` (readonly fields) and `StorageListener`. Events carry no old/new values; reads return current state, which may include a subsequent write.
+- All instances sharing a backend object and fully prefixed key share notifications. Writers do not need to subscribe. Local delivery is synchronous after mutation; reentrant mutations queue notifications in FIFO order. Listener exceptions are reported and do not interrupt other listeners or fail completed writes.
+- Successful writes emit `set`; existing-key removals emit `remove`. Helpers use their underlying read/write notifications. Identical serialized writes, missing-key removals, and failed mutations do not notify. Expiry metadata is part of equality.
+- `clear()` emits `remove` per affected subscribed key. Bulk removals complete before delivery; a partial failure still notifies completed removals and preserves the storage error.
+- Expiration remains lazy. Cleanup through `getItem()` and `clearExpired()` emits `expire`; the passage of time and bookkeeping reads do not. There are no expiration timers.
+- Browser storage events are filtered by storage area and exact key. External writes and deletions emit `set` and `remove`; native clears invalidate all subscribed keys for that backend. External deletion causes cannot be distinguished. Events are never written back to storage.
+- Subscriptions describe storage changes, not schema validity. A matching external write can notify even if the stored data is foreign or invalid. Direct backend writes in the same page are not observed.
+- Listener state and browser listeners are created lazily and released on unsubscribe. Non-browser memory/custom backends do not require browser globals. Coordination across separate copies of the library or mixed ESM/CJS runtimes is not supported.
+- Internal entry reads are separated from cleanup to support future snapshot work. Existing `getItem()` still returns fresh objects and removes expired data. Public snapshots, React integration, and namespace-wide subscriptions are deferred.
+
 ## Design decisions
 
 - **Factory function (`createStorage`)** — Accepts an options object with `storage` (any `Storage`-compatible backend), `prefix`, `separator`, and `serializer`, making it testable and usable with `sessionStorage`, memory storage, or custom implementations.
 - **Lazy expiration** — Expired items are treated as missing. `getItem()` removes them on read, while `has()`, `key()`, and `length` stay side-effect free.
+- **Core key subscriptions** — A shared backend/key registry observes mutations from all instances, plus native browser storage events. Notifications are framework-independent and require no plugin or new runtime dependency.
 - **Schema validation on read** — `getItem()` can validate retrieved values against any synchronous Standard Schema. Invalid values return `null`; async schemas are rejected.
 - **No implicit reads of foreign values** — Values written directly to the underlying storage (not via `greatstorage`) are ignored rather than returned as raw strings or plain JSON.
 - **Wrapper envelope** — Each value is stored as an internal envelope with metadata such as `__gs`, `version`, `value`, and `expiry`. The `__gs` marker distinguishes `greatstorage` entries from arbitrary objects.

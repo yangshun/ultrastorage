@@ -6,5 +6,7 @@ export type {
   GetOptions,
   GreatStorage,
   Serializer,
+  StorageChange,
+  StorageListener,
   StorageOptions,
 } from './types';

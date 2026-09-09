@@ -22,7 +22,26 @@ export interface GetOptions<T> {
   schema: StandardSchemaV1<unknown, T>;
 }
 
+/** A storage change. Read the current value with `getItem()`. */
+export interface StorageChange {
+  /** The key relative to the subscribing instance's prefix. */
+  readonly key: string;
+  readonly type: 'set' | 'remove' | 'expire';
+  /** `local` includes other instances on this page; `external` means a browser storage event. */
+  readonly source: 'local' | 'external';
+}
+
+export type StorageListener = (change: StorageChange) => void;
+
 interface GreatStorageExtensions {
+  /**
+   * Listens for changes to a key, without immediately invoking the listener.
+   * Local notifications are synchronous; external browser events arrive asynchronously.
+   * Expiration is lazy: only expiration cleanup emits an event, not the passage of time.
+   * Returns an unsubscribe function that is safe to call repeatedly.
+   */
+  subscribe(key: string, listener: StorageListener): () => void;
+
   /**
    * The number of non-expired entries in the current namespace.
    */

@@ -1,4 +1,12 @@
-import type { CoreStorageOptions, GetOptions, GreatStorage, StorageOptions } from './types';
+import { batchNotifications, hasSubscribers, notify, subscribe } from './subscriptions';
+import type {
+  CoreStorageOptions,
+  GetOptions,
+  GreatStorage,
+  StorageChange,
+  StorageListener,
+  StorageOptions,
+} from './types';
 
 declare const process: { env: { NODE_ENV?: string } };
 
@@ -38,7 +46,9 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
     return prefix + key;
   }
 
-  function getItem<T = unknown>(key: string, options?: GetOptions<T>): T | null {
+  // Reading and decoding do not clean up storage or emit notifications. A future
+  // snapshot adapter can build on this path without performing writes during reads.
+  function readEntry(key: string): StorageEntryEnvelope | null {
     const raw = storage.getItem(prefixedKey(key));
     if (raw === null) {
       return null;
@@ -63,8 +73,17 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
       return null;
     }
 
+    return entry;
+  }
+
+  function getItem<T = unknown>(key: string, options?: GetOptions<T>): T | null {
+    const entry = readEntry(key);
+    if (entry === null) {
+      return null;
+    }
+
     if (entry.expiry != null && Date.now() > entry.expiry) {
-      storage.removeItem(prefixedKey(key));
+      removeStoredItem(prefixedKey(key), 'expire');
       return null;
     }
 
@@ -128,7 +147,14 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
       value,
       expiry,
     };
-    storage.setItem(prefixedKey(key), serializer.stringify(entry));
+    const rawKey = prefixedKey(key);
+    const raw = serializer.stringify(entry);
+    const observed = hasSubscribers(storage, rawKey);
+    const previous = observed ? storage.getItem(rawKey) : null;
+    storage.setItem(rawKey, raw);
+    if (observed && previous !== raw) {
+      notify(storage, rawKey, 'set');
+    }
   }
 
   function getOrInit<T>(key: string, factory: () => T, options?: StorageOptions): T {
@@ -164,7 +190,15 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
   }
 
   function removeItem(key: string): void {
-    storage.removeItem(prefixedKey(key));
+    removeStoredItem(prefixedKey(key), 'remove');
+  }
+
+  function removeStoredItem(rawKey: string, type: StorageChange['type']): void {
+    const previous = hasSubscribers(storage, rawKey) ? storage.getItem(rawKey) : null;
+    storage.removeItem(rawKey);
+    if (previous !== null) {
+      notify(storage, rawKey, type);
+    }
   }
 
   function* entries(): Generator<[key: string, entry: StorageEntryEnvelope]> {
@@ -194,7 +228,10 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
     }
   }
 
-  function removeEntries(predicate: (entry: StorageEntryEnvelope) => boolean): void {
+  function removeEntries(
+    predicate: (entry: StorageEntryEnvelope) => boolean,
+    type: 'remove' | 'expire',
+  ): void {
     const keysToRemove: string[] = [];
 
     for (const [key, entry] of entries()) {
@@ -203,17 +240,19 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
       }
     }
 
-    for (const key of keysToRemove) {
-      storage.removeItem(key);
-    }
+    batchNotifications(() => {
+      for (const key of keysToRemove) {
+        removeStoredItem(key, type);
+      }
+    });
   }
 
   function clear(): void {
-    removeEntries(() => true);
+    removeEntries(() => true, 'remove');
   }
 
   function clearExpired(): void {
-    removeEntries((entry) => entry.expiry != null && Date.now() > entry.expiry);
+    removeEntries((entry) => entry.expiry != null && Date.now() > entry.expiry, 'expire');
   }
 
   function has(key: string): boolean {
@@ -253,6 +292,8 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
   }
 
   const api = {
+    subscribe: (key: string, listener: StorageListener) =>
+      subscribe(storage, prefixedKey(key), key, listener),
     get length() {
       let count = 0;
       for (const [, entry] of entries()) {

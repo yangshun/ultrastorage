@@ -7,6 +7,7 @@ Gives `localStorage` superpowers. Handles serialization of rich types, key expir
 - **Store anything**: Stores `Set`, `Map`, `Date`, `RegExp`, `BigInt`, circular references, and more using [devalue](https://github.com/sveltejs/devalue)
 - **TTL / expiration**: Set a `ttl` in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing, can be removed on `getItem()`, and can be swept with `clearExpired()`
 - **Namespacing**: Isolate keys with a configurable `prefix` and `separator`
+- **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
 - **Use any `Storage` backend**: Works with `localStorage`, `sessionStorage`, or any `Storage`-compatible implementation. An in-memory storage implementation is provided as well
 - **ESM and CJS**: Tree-shakeable dual builds with full TypeScript types
@@ -94,6 +95,35 @@ localStorage.getItem('theme'); // null
 // clear() only removes keys within the namespace
 appStorage.clear();
 ```
+
+### Subscribe to changes
+
+Subscribe to a key to update other parts of the page when its storage entry changes. Other GreatStorage instances sharing the same backend and fully prefixed key notify the same listeners, even if those instances never subscribe themselves.
+
+```ts
+const preferences = createStorage({ prefix: 'app' });
+
+function applyTheme() {
+  document.documentElement.dataset.theme = preferences.getItem<string>('theme') ?? 'system';
+}
+
+const unsubscribe = preferences.subscribe('theme', (change) => {
+  console.log(change.key, change.type, change.source);
+  // 'theme', 'set' | 'remove' | 'expire', 'local' | 'external'
+  applyTheme();
+});
+
+applyTheme(); // Subscribing does not invoke the listener immediately.
+
+const writer = createStorage({ prefix: 'app' });
+writer.setItem('theme', 'dark'); // Notifies this page synchronously.
+
+unsubscribe(); // Safe to call again; each subscription is independent.
+```
+
+Tabs sharing `localStorage` receive changes asynchronously through browser storage events. `sessionStorage` remains scoped to its tab; memory and custom backends support same-page notifications between instances sharing the exact backend object.
+
+Events describe storage changes, without carrying old/new values. Read the current value using `getItem()`, optionally with a schema. It may reflect a later write by the time you read it. Expiration stays lazy: only cleanup through `getItem()` or `clearExpired()` emits `expire`; passing the expiry time alone does not notify listeners.
 
 ### Check, remove, and clear
 
@@ -222,6 +252,35 @@ Returns a `GreatStorage` instance, that has the same interface as [`Storage`](ht
 ### `GreatStorage` instance
 
 A `GreatStorage` instance with the following methods:
+
+#### `storage.subscribe(key: string, listener: StorageListener): () => void`
+
+Subscribes to one key relative to the instance's prefix. Returns an idempotent unsubscribe function and does not call the listener immediately. Both package entry points export these types:
+
+```ts
+interface StorageChange {
+  readonly key: string;
+  readonly type: 'set' | 'remove' | 'expire';
+  readonly source: 'local' | 'external';
+}
+
+type StorageListener = (change: StorageChange) => void;
+```
+
+| Trigger                                         | Event                                   |
+| ----------------------------------------------- | --------------------------------------- |
+| `setItem()`, including writes through helpers   | `set`, `local`                          |
+| `removeItem()`                                  | `remove`, `local`                       |
+| `clear()`                                       | `remove` per affected key, `local`      |
+| Cleanup through `getItem()` or `clearExpired()` | `expire`, `local`                       |
+| Write or deletion observed from another tab     | `set` or `remove`, `external`           |
+| Native storage clear observed from another tab  | `remove` per subscribed key, `external` |
+
+Identical serialized writes (including expiry metadata), missing-key removals, and failed mutations do not notify listeners. Changing only expiry metadata still counts as a write. External deletions are always `remove`, since the browser cannot identify expiration cleanup or a namespace clear as their cause. Matching external writes can notify even when `getItem()` returns `null` for invalid or foreign data.
+
+Local notifications run after the mutation completes. Reentrant writes append their notifications to a FIFO queue instead of interrupting the current delivery. Bulk removals finish before notifications run; if a removal fails partway, completed removals still notify and the storage error propagates. Unsubscribing suppresses pending callbacks for that subscription. Subscriptions added during delivery do not receive already queued events.
+
+Listener exceptions are reported through `globalThis.reportError`, or `console.error` where unavailable, without interrupting other listeners or making a completed write throw. Browser listeners are attached lazily and removed after the backend's last unsubscribe.
 
 #### `storage.getItem<T = unknown>(key: string): T | null`
 
@@ -356,6 +415,8 @@ So `getItem({ schema })` validates the retrieved value right before your app use
 
 ## Caveats
 
+- **Same-page writes must go through GreatStorage to notify**: Direct backend writes do not emit same-page notifications. Cross-tab browser events are still observed. Coordination is limited to instances sharing one loaded library runtime; separately bundled copies and mixed ESM/CJS runtimes do not share a registry.
+- **Subscriptions are not React snapshots**: `getItem()` still returns freshly deserialized objects and can remove expired entries. A future React adapter will need a cached, side-effect-free snapshot read; this release does not include a React hook or snapshot API.
 - **Still synchronous storage**: This wraps `localStorage`-style APIs, so reads and writes are still synchronous and still subject to browser storage quotas.
 - **Changing serializers can strand old entries**: `getItem()` has a JSON fallback, but enumeration-based APIs like `clear()`, `clearExpired()`, `key()`, and `length` depend on the current serializer being able to parse old values. If you ever need to change serializers, we recommend changing the `prefix` and using a new namespace.
 - **Expired entries are cleaned up lazily**: Expired data is hidden from reads immediately, but it may still occupy storage until `getItem()` touches it or `clearExpired()` is called.
