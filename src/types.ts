@@ -33,7 +33,7 @@ export interface StorageChange {
 
 export type StorageListener = (change: StorageChange) => void;
 
-interface GreatStorageExtensions {
+interface UltraStorageExtensions {
   /**
    * Listens for changes to a key, without immediately invoking the listener.
    * Local notifications are synchronous; external browser events arrive asynchronously.
@@ -103,8 +103,8 @@ interface GreatStorageExtensions {
   ): T;
 
   /**
-   * Removes all greatstorage entries in the current namespace.
-   * Non-greatstorage entries and entries outside the namespace are left untouched.
+   * Removes all ultrastorage entries in the current namespace.
+   * Non-ultrastorage entries and entries outside the namespace are left untouched.
    */
   clear(): void;
 
@@ -122,11 +122,11 @@ interface GreatStorageExtensions {
 }
 
 /**
- * `GreatStorage` is a strict superset of the web `Storage` interface.
+ * `UltraStorage` is a strict superset of the web `Storage` interface.
  * It preserves the native API surface while adding typed reads, rich-value writes,
  * expiry support, and convenience helpers.
  */
-export type GreatStorage = GreatStorageExtensions & Storage;
+export type UltraStorage = UltraStorageExtensions & Storage;
 
 export interface Serializer {
   stringify: (value: unknown) => string;
@@ -157,7 +157,7 @@ export interface CreateStorageOptions {
 }
 
 /**
- * Options for the core `createStorage` function (from `greatstorage/core`).
+ * Options for the core `createStorage` function (from `ultrastorage/core`).
  * `serializer` is required because the core entry point does not bundle `devalue`.
  */
 export type CoreStorageOptions = Omit<CreateStorageOptions, 'serializer'> & {

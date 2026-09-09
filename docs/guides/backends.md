@@ -8,7 +8,7 @@ description: 'Use localStorage, sessionStorage, memory, or a custom serializer t
 Pass any `Storage`-compatible backend. Use `sessionStorage` for tab-scoped data, or `createMemoryStorage()` for tests and server-side rendering.
 
 ```ts
-import { createStorage, createMemoryStorage } from 'greatstorage';
+import { createStorage, createMemoryStorage } from 'ultrastorage';
 
 const storage = createStorage({
   storage: typeof window === 'undefined' ? createMemoryStorage() : undefined,
@@ -38,10 +38,10 @@ const storage = createStorage({
 });
 ```
 
-If you provide your own serializer and want to keep `devalue` out of your bundle entirely, import from `greatstorage/core` instead. The only difference is that `serializer` is required.
+If you provide your own serializer and want to keep `devalue` out of your bundle entirely, import from `ultrastorage/core` instead. The only difference is that `serializer` is required.
 
 ```ts
-import { createStorage } from 'greatstorage/core';
+import { createStorage } from 'ultrastorage/core';
 import superjson from 'superjson';
 
 const storage = createStorage({

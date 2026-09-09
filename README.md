@@ -1,4 +1,4 @@
-# greatstorage
+# ultrastorage
 
 Gives `localStorage` superpowers. Handles serialization of rich types, key expiration, namespacing, and schema validation — so you don't have to.
 
@@ -8,7 +8,7 @@ Gives `localStorage` superpowers. Handles serialization of rich types, key expir
 - **TTL / expiration**: Set a `ttl` in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing, can be removed on `getItem()`, and can be swept with `clearExpired()`
 - **Namespacing**: Isolate keys with a configurable `prefix` and `separator`
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
-- **React hooks**: Optional [`greatstorage/react` adapter](docs/react/index.md) with typed values, functional updates, and server rendering
+- **React hooks**: Optional [`ultrastorage/react` adapter](docs/react/index.md) with typed values, functional updates, and server rendering
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
 - **Use any `Storage` backend**: Works with `localStorage`, `sessionStorage`, or any `Storage`-compatible implementation. An in-memory storage implementation is provided as well
 - **ESM and CJS**: Tree-shakeable dual builds with full TypeScript types
@@ -16,12 +16,14 @@ Gives `localStorage` superpowers. Handles serialization of rich types, key expir
 ## Installation
 
 ```sh
-npm install greatstorage
+npm install ultrastorage
 ```
 
 ## How it works
 
-Internally, every value is stored as an object rather than being written to the storage raw. That object carries the user `value`, an optional `expiry`, a `version`, and an internal `__gs` marker. The marker is there so `greatstorage` can reliably tell its own entries apart from unrelated keys already living in the same `Storage`. The version is there so the on-disk format can evolve later without guessing which shape an older entry used if this library ever needs to change the internal storage structure.
+Internally, every value is stored as an object rather than being written to the storage raw. That object carries the user `value`, an optional `expiry`, a `version`, and an internal `__us` marker. The marker is there so `ultrastorage` can reliably tell its own entries apart from unrelated keys already living in the same `Storage`. The version is there so the on-disk format can evolve later without guessing which shape an older entry used if this library ever needs to change the internal storage structure.
+
+New writes use `__us`; existing entries marked with `__gs` remain fully supported without migration.
 
 Refer to the [documentation](docs/reference/how-it-works.md) for more explanation regarding internals and design decisions.
 
@@ -33,7 +35,7 @@ Store and retrieve objects without the `JSON.stringify` dance. You're welcome.
 
 ```ts
 // lib/storage.ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 
 // Create an app-wide singleton instance.
 export const storage = createStorage();
@@ -99,7 +101,7 @@ appStorage.clear();
 
 ### Subscribe to changes
 
-Subscribe to a key to update other parts of the page when its storage entry changes. Other GreatStorage instances sharing the same backend and fully prefixed key notify the same listeners, even if those instances never subscribe themselves.
+Subscribe to a key to update other parts of the page when its storage entry changes. Other ultrastorage instances sharing the same backend and fully prefixed key notify the same listeners, even if those instances never subscribe themselves.
 
 ```ts
 const preferences = createStorage({ prefix: 'app' });
@@ -135,7 +137,7 @@ storage.has('user'); // true
 storage.removeItem('user');
 storage.has('user'); // false
 
-storage.clear(); // remove all entries written by `greatstorage`
+storage.clear(); // remove all entries written by `ultrastorage`
 storage.clearExpired(); // remove only expired entries
 ```
 
@@ -180,7 +182,7 @@ const user = storage.getItem('user', { schema: UserSchema });
 Pass any `Storage`-compatible backend. Use `sessionStorage` for tab-scoped data, or `createMemoryStorage()` for tests and server-side rendering.
 
 ```ts
-import { createStorage, createMemoryStorage } from 'greatstorage';
+import { createStorage, createMemoryStorage } from 'ultrastorage';
 
 const storage = createStorage({
   storage: typeof window === 'undefined' ? createMemoryStorage() : undefined,
@@ -199,10 +201,10 @@ const storage = createStorage({
 });
 ```
 
-If you provide your own serializer and want to keep `devalue` out of your bundle entirely, import from `greatstorage/core` instead. The only difference is that `serializer` is required.
+If you provide your own serializer and want to keep `devalue` out of your bundle entirely, import from `ultrastorage/core` instead. The only difference is that `serializer` is required.
 
 ```ts
-import { createStorage } from 'greatstorage/core';
+import { createStorage } from 'ultrastorage/core';
 import superjson from 'superjson';
 
 const storage = createStorage({

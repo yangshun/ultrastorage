@@ -4,7 +4,7 @@ export type {
   CoreStorageOptions,
   CreateStorageOptions,
   GetOptions,
-  GreatStorage,
+  UltraStorage,
   Serializer,
   StorageChange,
   StorageListener,

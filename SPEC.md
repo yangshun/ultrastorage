@@ -1,4 +1,4 @@
-# greatstorage — Spec
+# ultrastorage — Spec
 
 ## Problems
 
@@ -8,24 +8,24 @@ The native `localStorage` API has several pain points. This library solves the m
 
 `localStorage` only stores string values. Storing any other type requires manual `JSON.stringify()` on write and `JSON.parse()` on read. This is tedious, error-prone (parsing can throw), and easy to forget.
 
-`greatstorage` uses [`devalue`](https://github.com/sveltejs/devalue) for serialization, which handles all JSON-compatible types plus rich types that `JSON.stringify` silently mangles or drops: `Set`, `Map`, `Date`, `RegExp`, `BigInt`, `NaN`, `Infinity`, `-0`, `undefined`, and circular references.
+`ultrastorage` uses [`devalue`](https://github.com/sveltejs/devalue) for serialization, which handles all JSON-compatible types plus rich types that `JSON.stringify` silently mangles or drops: `Set`, `Map`, `Date`, `RegExp`, `BigInt`, `NaN`, `Infinity`, `-0`, `undefined`, and circular references.
 
 ### 2. No expiration mechanism
 
 `localStorage` has no built-in TTL or expiry. Data persists indefinitely until explicitly removed. Implementing expiration manually requires storing timestamps alongside values and checking them on every read.
 
-`greatstorage` supports an optional `ttl` (time-to-live) in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing. `getItem()` removes expired entries on read, while `has()`, `key()`, and `length` ignore them until `clearExpired()` is called.
+`ultrastorage` supports an optional `ttl` (time-to-live) in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing. `getItem()` removes expired entries on read, while `has()`, `key()`, and `length` ignore them until `clearExpired()` is called.
 
 ### 3. No namespacing
 
 All keys in `localStorage` share a single flat namespace per origin. When multiple apps, modules, or versions write to the same storage, key collisions can silently overwrite data.
 
-`greatstorage` supports an optional `prefix` that is transparently prepended to every key. Each namespace is fully isolated — `clear()` only removes keys within that namespace, not the entire storage.
+`ultrastorage` supports an optional `prefix` that is transparently prepended to every key. Each namespace is fully isolated — `clear()` only removes keys within that namespace, not the entire storage.
 
 ## API
 
 ```ts
-import { createMemoryStorage, createStorage } from 'greatstorage';
+import { createMemoryStorage, createStorage } from 'ultrastorage';
 import { z } from 'zod';
 
 const storage = createStorage(); // defaults to localStorage, no prefix
@@ -48,7 +48,7 @@ storage.getItem('token'); // → 'abc123' (or null if expired)
 // Utility methods
 storage.has('key'); // check existence (respects TTL)
 storage.removeItem('key'); // remove a single key
-storage.clear(); // remove all keys written by `greatstorage`
+storage.clear(); // remove all keys written by `ultrastorage`
 storage.clearExpired(); // proactively remove expired keys
 
 // Namespacing
@@ -102,7 +102,7 @@ unsubscribe();
 
 ## React adapter
 
-- Publish `useStorage(storage, key, options?)` and `createStorageHook(storage)` from `greatstorage/react` in the same package. The factory returns an equivalent bound hook. Support React 18/19 as optional peers, with separate ESM/CJS outputs and declarations and a React-only `use client` boundary. Main/core do not import React or its types.
+- Publish `useStorage(storage, key, options?)` and `createStorageHook(storage)` from `ultrastorage/react` in the same package. The factory returns an equivalent bound hook. Support React 18/19 as optional peers, with separate ESM/CJS outputs and declarations and a React-only `use client` boundary. Main/core do not import React or its types.
 - Return a readonly `[value, setValue, removeValue]` tuple. Options are `defaultValue` and synchronous Standard Schema `schema`; infer schema output, default, or explicit generic types. Without a default, values and updater inputs include `null`.
 - A read returning null uses the display-only default or null. This includes missing, expired, foreign, parse-invalid, schema-invalid, and stored-null entries. Omitted or undefined defaults use null; preserve valid stored undefined. Defaults are per consumer and are never validated or persisted. A non-null, non-undefined default removes null from the result type even for nullable schemas.
 - Setters accept a value or updater plus existing per-write expiration options. Updaters read the current backend, validate, and apply the fallback; writes accept schema output types without write validation. Removal restores the fallback. Failed operations throw and do not optimistically alter hook state. Updaters are not transactions across tabs.
@@ -120,7 +120,7 @@ unsubscribe();
 - **Lazy expiration** — Expired items are treated as missing. `getItem()` removes them on read, while `has()`, `key()`, and `length` stay side-effect free.
 - **Core key subscriptions** — A shared backend/key registry observes mutations from all instances, plus native browser storage events. Notifications are framework-independent and require no plugin or new runtime dependency.
 - **Schema validation on read** — `getItem()` can validate retrieved values against any synchronous Standard Schema. Invalid values return `null`; async schemas are rejected.
-- **No implicit reads of foreign values** — Values written directly to the underlying storage (not via `greatstorage`) are ignored rather than returned as raw strings or plain JSON.
-- **Wrapper envelope** — Each value is stored as an internal envelope with metadata such as `__gs`, `version`, `value`, and `expiry`. The `__gs` marker distinguishes `greatstorage` entries from arbitrary objects.
+- **No implicit reads of foreign values** — Values written directly to the underlying storage (not via `ultrastorage`) are ignored rather than returned as raw strings or plain JSON.
+- **Wrapper envelope** — Each value is stored as an internal envelope with metadata such as `__us`, `version`, `value`, and `expiry`. New writes use `__us`; both `__us` and the legacy `__gs` marker are recognized when reading and managing entries.
 - **Serialization via `devalue`** — Rich types are handled by [`devalue`](https://github.com/sveltejs/devalue) by default. Users can provide a custom `serializer` with `stringify` and `parse` methods (e.g. `superjson`, or plain `JSON` for minimal setups).
 - **Scoped `clear()`** — When a prefix is set, `clear()` only removes keys belonging to that namespace rather than wiping the entire storage.

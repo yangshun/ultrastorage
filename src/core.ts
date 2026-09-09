@@ -5,7 +5,7 @@ import { batchNotifications, hasSubscribers, notify, subscribe } from './subscri
 import type {
   CoreStorageOptions,
   GetOptions,
-  GreatStorage,
+  UltraStorage,
   StorageChange,
   StorageListener,
   StorageOptions,
@@ -13,14 +13,14 @@ import type {
 
 declare const process: { env: { NODE_ENV?: string } };
 
-const ENTRY_MARKER = '__gs';
+const ENTRY_MARKER = '__us';
 const warned = process.env.NODE_ENV !== 'production' ? new Set<string>() : undefined;
 
 // Implemented as a closure factory rather than a class so that internal helpers
 // (forEachEntry, removeEntries, serializer, etc.) are truly private, destructuring
 // works without `this`-binding issues, and the return type is a plain object that
 // is easy to mock in tests.
-export function createStorage(options: CoreStorageOptions): GreatStorage {
+export function createStorage(options: CoreStorageOptions): UltraStorage {
   let backend = options.storage;
   function getBackend(): Storage {
     return (backend ??= localStorage);
@@ -76,14 +76,14 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
       if (value === null && !warned!.has(`null:${key}`)) {
         warned!.add(`null:${key}`);
         console.warn(
-          `[greatstorage] Storing \`null\` for key "${key}". This is indistinguishable from a missing key when read back with \`getItem()\`. If you need to distinguish between "set to null" and "not set", consider using a sentinel value or pairing \`getItem()\` with \`has()\`.`,
+          `[ultrastorage] Storing \`null\` for key "${key}". This is indistinguishable from a missing key when read back with \`getItem()\`. If you need to distinguish between "set to null" and "not set", consider using a sentinel value or pairing \`getItem()\` with \`has()\`.`,
         );
       }
 
       if (expiry != null && Date.now() > expiry && !warned!.has(`expiry:${key}`)) {
         warned!.add(`expiry:${key}`);
         console.warn(
-          `[greatstorage] Key "${key}" is being stored with an expiry already in the past. It will be treated as expired immediately on the next read.`,
+          `[ultrastorage] Key "${key}" is being stored with an expiry already in the past. It will be treated as expired immediately on the next read.`,
         );
       }
     }
@@ -116,7 +116,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
       if (value === null && !warned!.has(`getOrInit:${key}`)) {
         warned!.add(`getOrInit:${key}`);
         console.warn(
-          `[greatstorage] \`getOrInit()\` factory for key "${key}" returned \`null\`. Since \`getItem()\` also returns \`null\` for missing keys, the factory will be called again on every \`getOrInit()\` call.`,
+          `[ultrastorage] \`getOrInit()\` factory for key "${key}" returned \`null\`. Since \`getItem()\` also returns \`null\` for missing keys, the factory will be called again on every \`getOrInit()\` call.`,
         );
       }
     }
@@ -170,7 +170,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
           yield [key, entry];
         }
       } catch {
-        // Not a greatstorage entry, skip
+        // Not a ultrastorage entry, skip
       }
     }
   }
@@ -259,7 +259,7 @@ export function createStorage(options: CoreStorageOptions): GreatStorage {
     clear,
     clearExpired,
     has,
-  } satisfies GreatStorage;
+  } satisfies UltraStorage;
 
   registerSnapshotAccess(api, {
     readRaw: (key) => getBackend().getItem(prefixedKey(key)),

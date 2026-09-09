@@ -4,10 +4,10 @@ description: 'React to key changes within a page, across instances, and in other
 ---
 
 ```ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 ```
 
-Subscribe to a key to update other parts of the page when its storage entry changes. Other GreatStorage instances sharing the same backend and fully prefixed key notify the same listeners, even if those instances never subscribe themselves.
+Subscribe to a key to update other parts of the page when its storage entry changes. Other ultrastorage instances sharing the same backend and fully prefixed key notify the same listeners, even if those instances never subscribe themselves.
 
 ```ts
 const preferences = createStorage({ prefix: 'app' });

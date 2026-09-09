@@ -3,7 +3,7 @@ title: 'Storage API'
 description: 'Factory options, typed reads, writes, expiration, subscriptions, and Storage-compatible methods.'
 ---
 
-## `createStorage(options?: CreateStorageOptions): GreatStorage`
+## `createStorage(options?: CreateStorageOptions): UltraStorage`
 
 Creates a new storage instance. All options are optional.
 
@@ -14,13 +14,13 @@ Creates a new storage instance. All options are optional.
 | `storage`    | `Storage`    | `localStorage` | Underlying Storage backend                             |
 | `serializer` | `Serializer` | `devalue`      | Custom serializer with `stringify` and `parse` methods |
 
-Also available from `greatstorage/core` where `serializer` is **required** and `devalue` is not bundled. See [Custom serializer](/guides/backends#custom-serialization).
+Also available from `ultrastorage/core` where `serializer` is **required** and `devalue` is not bundled. See [Custom serializer](/guides/backends#custom-serialization).
 
-Returns a `GreatStorage` instance, that has the same interface as [`Storage`](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), with additional APIs.
+Returns a `UltraStorage` instance, that has the same interface as [`Storage`](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), with additional APIs.
 
-## `GreatStorage` instance
+## `UltraStorage` instance
 
-A `GreatStorage` instance with the following methods:
+A `UltraStorage` instance with the following methods:
 
 ### `storage.subscribe(key, listener)`
 
@@ -66,7 +66,7 @@ Options:
 
 `ttl` and `expiresAt` cannot be used together.
 
-`getOrInit()` is useful for migrating from an existing `localStorage` (but non-`greatstorage`) key. To do that, specify a `factory` function that reads from the existing `localStorage` key.
+`getOrInit()` is useful for migrating from an existing `localStorage` (but non-`ultrastorage`) key. To do that, specify a `factory` function that reads from the existing `localStorage` key.
 
 ```ts
 const theme = storage.getOrInit('theme', () => localStorage.getItem('theme'));
@@ -99,9 +99,9 @@ Returns the key at the given zero-based index among non-expired entries, or `nul
 
 ### `storage.clear(): void`
 
-Removes all entries written by `greatstorage` in the current namespace.
+Removes all entries written by `ultrastorage` in the current namespace.
 
-Entries outside the namespace and values not written by `greatstorage` are left untouched.
+Entries outside the namespace and values not written by `ultrastorage` are left untouched.
 
 ### `storage.clearExpired(): void`
 

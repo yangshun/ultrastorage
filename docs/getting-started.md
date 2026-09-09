@@ -1,12 +1,12 @@
 ---
 title: 'Getting started'
-description: 'Install GreatStorage, create a shared instance, and choose the right entry point.'
+description: 'Install ultrastorage, create a shared instance, and choose the right entry point.'
 ---
 
 ## Installation
 
 ```sh
-npm install greatstorage
+npm install ultrastorage
 ```
 
 ## Create a shared instance
@@ -15,7 +15,7 @@ Store and retrieve objects without the `JSON.stringify` dance. You're welcome.
 
 ```ts
 // lib/storage.ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 
 // Create an app-wide singleton instance.
 export const storage = createStorage();
@@ -33,9 +33,9 @@ storage.getItem('user'); // { name: 'Alice', age: 30 }
 
 | Import               | Use it for                                                          |
 | -------------------- | ------------------------------------------------------------------- |
-| `greatstorage`       | Default devalue serialization, rich types, and all storage methods. |
-| `greatstorage/core`  | Your own serializer, with no bundled devalue.                       |
-| `greatstorage/react` | `useStorage` and `createStorageHook` for React 18 and 19.           |
+| `ultrastorage`       | Default devalue serialization, rich types, and all storage methods. |
+| `ultrastorage/core`  | Your own serializer, with no bundled devalue.                       |
+| `ultrastorage/react` | `useStorage` and `createStorageHook` for React 18 and 19.           |
 
 Create storage instances outside components and reuse them throughout your app. Construction is safe on the server because default localStorage access is deferred until the first operation. Ordinary reads and writes still require an available backend; use [memory storage](/guides/backends) for server operations.
 

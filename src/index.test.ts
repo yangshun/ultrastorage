@@ -1,8 +1,8 @@
 import { describe, it, expect, expectTypeOf, vi, beforeEach } from 'vite-plus/test';
 import { createStorage, createMemoryStorage } from './index';
-import type { GreatStorage } from './types';
+import type { UltraStorage } from './types';
 
-describe('greatstorage', () => {
+describe('ultrastorage', () => {
   let storage: ReturnType<typeof createStorage>;
   let mockStorage: Storage;
 
@@ -18,7 +18,7 @@ describe('greatstorage', () => {
     webStorage.setItem('name', 'Alice');
 
     expect(webStorage.getItem('name')).toBe('Alice');
-    expectTypeOf<GreatStorage>().toMatchTypeOf<Storage>();
+    expectTypeOf<UltraStorage>().toMatchTypeOf<Storage>();
   });
 
   it('uses the browser localStorage backend when none is provided', () => {
@@ -170,7 +170,7 @@ describe('greatstorage', () => {
       expect(storage.getItem('missing')).toBe(1);
     });
 
-    it('removes all greatstorage keys', () => {
+    it('removes all ultrastorage keys', () => {
       storage.setItem('a', 1);
       storage.setItem('b', 2);
       storage.clear();
@@ -178,7 +178,7 @@ describe('greatstorage', () => {
       expect(storage.getItem('b')).toBeNull();
     });
 
-    it('does not remove non-greatstorage keys', () => {
+    it('does not remove non-ultrastorage keys', () => {
       mockStorage.setItem('external', 'keep me');
       storage.setItem('a', 1);
       storage.clear();
@@ -201,7 +201,7 @@ describe('greatstorage', () => {
       vi.useRealTimers();
     });
 
-    it('does not remove non-greatstorage entries', () => {
+    it('does not remove non-ultrastorage entries', () => {
       vi.useFakeTimers();
       mockStorage.setItem('external', 'keep me');
       storage.setItem('temp', 'a', { ttl: 1000 });
@@ -285,7 +285,7 @@ describe('greatstorage', () => {
       vi.useRealTimers();
     });
 
-    it('does not count non-greatstorage entries', () => {
+    it('does not count non-ultrastorage entries', () => {
       mockStorage.setItem('external', 'value');
       storage.setItem('internal', 'value');
       expect(storage.length).toBe(1);
@@ -334,7 +334,7 @@ describe('greatstorage', () => {
       expect(nsStorage.key(0)).toBe('foo');
     });
 
-    it('skips non-greatstorage entries', () => {
+    it('skips non-ultrastorage entries', () => {
       mockStorage.setItem('external', 'raw');
       storage.setItem('internal', 'value');
       expect(storage.key(0)).toBe('internal');
@@ -514,23 +514,23 @@ describe('greatstorage', () => {
     });
   });
 
-  describe('coexistence with non-greatstorage entries', () => {
-    it('returns null for raw strings not set by greatstorage', () => {
+  describe('coexistence with non-ultrastorage entries', () => {
+    it('returns null for raw strings not set by ultrastorage', () => {
       mockStorage.setItem('raw', 'just a string');
       expect(storage.getItem('raw')).toBeNull();
     });
 
-    it('returns null for JSON values not set by greatstorage', () => {
+    it('returns null for JSON values not set by ultrastorage', () => {
       mockStorage.setItem('obj', JSON.stringify({ hello: 'world' }));
       expect(storage.getItem('obj')).toBeNull();
     });
 
-    it('has returns false for non-greatstorage entries', () => {
+    it('has returns false for non-ultrastorage entries', () => {
       mockStorage.setItem('external', 'value');
       expect(storage.has('external')).toBe(false);
     });
 
-    it('does not interfere with non-greatstorage entries in underlying storage', () => {
+    it('does not interfere with non-ultrastorage entries in underlying storage', () => {
       mockStorage.setItem('external', 'keep me');
       storage.setItem('internal', 'managed');
       expect(mockStorage.getItem('external')).toBe('keep me');

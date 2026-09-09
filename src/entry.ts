@@ -12,8 +12,7 @@ export function isStorageEntry(data: unknown): data is StorageEntryEnvelope {
   return (
     typeof data === 'object' &&
     data !== null &&
-    '__gs' in data &&
-    data.__gs === true &&
+    (('__us' in data && data.__us === true) || ('__gs' in data && data.__gs === true)) &&
     'value' in data &&
     'version' in data &&
     'expiry' in data

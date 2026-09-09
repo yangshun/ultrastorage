@@ -4,7 +4,7 @@ description: 'Validate and transform stored values with a synchronous Standard S
 ---
 
 ```ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 
 const storage = createStorage();
 ```

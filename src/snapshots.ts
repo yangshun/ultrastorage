@@ -1,6 +1,6 @@
 import { decodeEntry } from './entry';
 import type { StorageEntryEnvelope } from './entry';
-import type { GreatStorage, Serializer } from './types';
+import type { UltraStorage, Serializer } from './types';
 
 interface SnapshotAccess {
   readRaw: (key: string) => string | null;
@@ -9,16 +9,16 @@ interface SnapshotAccess {
 
 // Private, shared by all package entry points. No framework imports or global
 // key cache: each reader's cache lives only as long as its consumer does.
-const accessors = new WeakMap<GreatStorage, SnapshotAccess>();
+const accessors = new WeakMap<UltraStorage, SnapshotAccess>();
 
-export function registerSnapshotAccess(storage: GreatStorage, access: SnapshotAccess): void {
+export function registerSnapshotAccess(storage: UltraStorage, access: SnapshotAccess): void {
   accessors.set(storage, access);
 }
 
-export function createSnapshotReader(storage: GreatStorage, key: string) {
+export function createSnapshotReader(storage: UltraStorage, key: string) {
   const access = accessors.get(storage);
   if (!access) {
-    throw new TypeError('The adapter requires a storage instance created by greatstorage.');
+    throw new TypeError('The adapter requires a storage instance created by ultrastorage.');
   }
   let previousRaw: string | null | undefined;
   let entry: StorageEntryEnvelope | null = null;

@@ -41,4 +41,4 @@ Configure a static host to install development dependencies, run `vp run docs:bu
 
 Blume can infer the production site URL on supported hosts. Set `deployment.site` in `docs/blume.config.ts` when a canonical domain is known. For a project hosted below a URL path, also set `deployment.base`. No deployment domain is assumed by this repository.
 
-See the [Blume deployment guide](https://useblume.dev/docs/deployment) for host-specific settings, and the [package spec](https://github.com/yangshun/greatstorage/blob/main/SPEC.md) and [changelog](https://github.com/yangshun/greatstorage/blob/main/CHANGELOG.md) for design and release notes.
+See the [Blume deployment guide](https://useblume.dev/docs/deployment) for host-specific settings, and the [package spec](https://github.com/yangshun/ultrastorage/blob/main/SPEC.md) and [changelog](https://github.com/yangshun/ultrastorage/blob/main/CHANGELOG.md) for design and release notes.

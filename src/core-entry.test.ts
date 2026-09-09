@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
+import { stringify, parse } from 'devalue';
 import { createStorage, createMemoryStorage } from './core-entry';
 
-describe('greatstorage/core', () => {
+describe('ultrastorage/core', () => {
   let mockStorage: Storage;
   const jsonSerializer = {
     stringify: (value: unknown) => JSON.stringify(value),
@@ -30,6 +31,53 @@ describe('greatstorage/core', () => {
     expect(storage.has('key')).toBe(false);
     expect(storage.getItem('key')).toBeNull();
     expect(mockStorage.getItem('key')).toBe(raw);
+  });
+
+  it.each([
+    ['JSON', jsonSerializer],
+    ['devalue', { stringify, parse }],
+  ] as const)('supports legacy entries with %s and writes the new marker', (_, serializer) => {
+    const storage = createStorage({ storage: mockStorage, serializer, prefix: 'app' });
+    const legacy = serializer.stringify({ __gs: true, version: 1, value: 'old', expiry: null });
+    mockStorage.setItem('app:legacy', legacy);
+    mockStorage.setItem('other:legacy', legacy);
+    mockStorage.setItem(
+      'app:expired',
+      serializer.stringify({ __gs: true, version: 1, value: 'expired', expiry: Date.now() - 1 }),
+    );
+    mockStorage.setItem(
+      'app:foreign',
+      serializer.stringify({
+        __us: false,
+        __gs: false,
+        version: 1,
+        value: 'foreign',
+        expiry: null,
+      }),
+    );
+
+    expect(storage.getItem('legacy')).toBe('old');
+    expect(storage.has('legacy')).toBe(true);
+    expect(storage.length).toBe(1);
+    expect(storage.key(0)).toBe('legacy');
+    expect(mockStorage.getItem('app:legacy')).toBe(legacy);
+    expect(storage.has('expired')).toBe(false);
+    expect(storage.getItem('foreign')).toBeNull();
+    storage.clearExpired();
+    expect(mockStorage.getItem('app:expired')).toBeNull();
+
+    storage.setItem('new', 'new');
+    expect(serializer.parse(mockStorage.getItem('app:new')!)).toEqual({
+      __us: true,
+      version: 1,
+      value: 'new',
+      expiry: null,
+    });
+    storage.clear();
+    expect(mockStorage.getItem('app:legacy')).toBeNull();
+    expect(mockStorage.getItem('app:new')).toBeNull();
+    expect(mockStorage.getItem('other:legacy')).toBe(legacy);
+    expect(mockStorage.getItem('app:foreign')).not.toBeNull();
   });
 
   it('uses the provided serializer for writing', () => {

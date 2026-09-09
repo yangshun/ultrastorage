@@ -14,7 +14,7 @@ import { hydrateRoot } from 'react-dom/client';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { createMemoryStorage, createStorage } from './index';
 import { createStorage as createCoreStorage } from './core-entry';
-import type { GreatStorage } from './types';
+import type { UltraStorage } from './types';
 import { createStorageHook, useStorage } from './react';
 
 const numberSchema: StandardSchemaV1<unknown, number> = {
@@ -223,7 +223,7 @@ describe('React storage hooks', () => {
     expect(hook.result.current[0]).toBeNull();
     expect(remove).not.toHaveBeenCalled();
     expect(backend.length).toBe(1);
-    backend.setItem('n', JSON.stringify({ __gs: true, version: 1, value: 7, expiry: null }));
+    backend.setItem('n', JSON.stringify({ __us: true, version: 1, value: 7, expiry: null }));
     hook.rerender();
     expect(hook.result.current[0]).toBe(7);
     hook.unmount();
@@ -232,34 +232,41 @@ describe('React storage hooks', () => {
     expect(remount.result.current[0]).toBe(8);
   });
 
-  it('receives matching browser events including invalid data, deletions, and native clear', () => {
-    const storage = createStorage({ prefix: 'react' });
-    const hook = renderHook(() => useStorage<number>(storage, 'n'));
-    const external = (key: string | null, newValue: string | null, storageArea = localStorage) => {
-      if (key === null) storageArea.clear();
-      else if (newValue === null) storageArea.removeItem(key);
-      else storageArea.setItem(key, newValue);
-      window.dispatchEvent(
-        new StorageEvent('storage', { key, newValue, oldValue: 'old', storageArea }),
-      );
-    };
-    const raw = JSON.stringify({ __gs: true, version: 1, value: 4, expiry: null });
-    act(() => external('react:n', raw));
-    expect(hook.result.current[0]).toBe(4);
-    act(() => {
-      external('other', raw);
-      external('react:n', raw, sessionStorage);
-    });
-    expect(hook.result.current[0]).toBe(4);
-    act(() => external('react:n', 'foreign'));
-    expect(hook.result.current[0]).toBeNull();
-    act(() => external('react:n', raw));
-    act(() => external('react:n', null));
-    expect(hook.result.current[0]).toBeNull();
-    act(() => external('react:n', raw));
-    act(() => external(null, null));
-    expect(hook.result.current[0]).toBeNull();
-  });
+  it.each(['__us', '__gs'])(
+    'receives %s browser events including invalid data, deletions, and native clear',
+    (marker) => {
+      const storage = createStorage({ prefix: 'react' });
+      const hook = renderHook(() => useStorage<number>(storage, 'n'));
+      const external = (
+        key: string | null,
+        newValue: string | null,
+        storageArea = localStorage,
+      ) => {
+        if (key === null) storageArea.clear();
+        else if (newValue === null) storageArea.removeItem(key);
+        else storageArea.setItem(key, newValue);
+        window.dispatchEvent(
+          new StorageEvent('storage', { key, newValue, oldValue: 'old', storageArea }),
+        );
+      };
+      const raw = JSON.stringify({ [marker]: true, version: 1, value: 4, expiry: null });
+      act(() => external('react:n', raw));
+      expect(hook.result.current[0]).toBe(4);
+      act(() => {
+        external('other', raw);
+        external('react:n', raw, sessionStorage);
+      });
+      expect(hook.result.current[0]).toBe(4);
+      act(() => external('react:n', 'foreign'));
+      expect(hook.result.current[0]).toBeNull();
+      act(() => external('react:n', raw));
+      act(() => external('react:n', null));
+      expect(hook.result.current[0]).toBeNull();
+      act(() => external('react:n', raw));
+      act(() => external(null, null));
+      expect(hook.result.current[0]).toBeNull();
+    },
+  );
 
   it('cleans up subscriptions under Strict Mode', () => {
     const storage = createStorage({ storage: createMemoryStorage() });
@@ -339,8 +346,8 @@ describe('React storage hooks', () => {
 
   it('rejects unsupported instances, async schemas, and read/validation errors', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(() => renderHook(() => useStorage({} as GreatStorage, 'n'))).toThrow(
-      'created by greatstorage',
+    expect(() => renderHook(() => useStorage({} as UltraStorage, 'n'))).toThrow(
+      'created by ultrastorage',
     );
     const backend = createMemoryStorage();
     const storage = createStorage({ storage: backend });

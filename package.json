@@ -1,5 +1,5 @@
 {
-  "name": "greatstorage",
+  "name": "ultrastorage",
   "version": "0.5.0",
   "description": "Gives localStorage superpowers. Handles serialization of rich types, key expiration, namespacing, and schema validation",
   "keywords": [

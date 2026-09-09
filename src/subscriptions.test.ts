@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import { createMemoryStorage, createStorage } from './index';
 import { createStorage as createCoreStorage } from './core-entry';
 import type { StorageChange, StorageListener } from './core-entry';
-import type { GreatStorage, StorageChange as DefaultStorageChange } from './index';
+import type { UltraStorage, StorageChange as DefaultStorageChange } from './index';
 
 describe('subscriptions', () => {
   let backend: Storage;
-  let storage: GreatStorage;
+  let storage: UltraStorage;
   let cleanups: (() => void)[];
 
   beforeEach(() => {

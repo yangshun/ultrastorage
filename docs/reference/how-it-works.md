@@ -3,19 +3,19 @@ title: 'How it works'
 description: 'Understand the stored envelope, serialization, namespaces, and lazy expiration.'
 ---
 
-`greatstorage` is intentionally small. Under the hood, it's a thin wrapper around a `Storage` instance (e.g. `localStorage` / `sessionStorage`) that serializes your value together with a bit of metadata, then gives you a nicer API for reading it back safely.
+`ultrastorage` is intentionally small. Under the hood, it's a thin wrapper around a `Storage` instance (e.g. `localStorage` / `sessionStorage`) that serializes your value together with a bit of metadata, then gives you a nicer API for reading it back safely.
 
 ## Internal entry format
 
 Each stored value is wrapped in an internal envelope before being written to storage. That envelope includes a marker, a format version, your actual value, and an optional expiry timestamp.
 
-This is what lets `greatstorage` tell its own entries apart from random keys already sitting in `localStorage`, attach TTL metadata without changing your value shape, and leave room to evolve the format later without pretending raw strings are part of the contract.
+This is what lets `ultrastorage` tell its own entries apart from random keys already sitting in `localStorage`, attach TTL metadata without changing your value shape, and leave room to evolve the format later without pretending raw strings are part of the contract.
 
 ## Serialization by default, not by accident
 
-By default, `greatstorage` uses [`devalue`](https://github.com/sveltejs/devalue) instead of `JSON.stringify()`. The point is not novelty. It's that JSON quietly loses or mangles useful JavaScript values like `Set`, `Map`, `Date`, `RegExp`, `BigInt`, `undefined`, `NaN`, and circular references.
+By default, `ultrastorage` uses [`devalue`](https://github.com/sveltejs/devalue) instead of `JSON.stringify()`. The point is not novelty. It's that JSON quietly loses or mangles useful JavaScript values like `Set`, `Map`, `Date`, `RegExp`, `BigInt`, `undefined`, `NaN`, and circular references.
 
-The serializer is configurable on purpose. If you want `superjson`, or plain JSON for a more constrained setup, you can swap in your own `stringify` and `parse` methods and keep the rest of the API unchanged. If you bring your own serializer, import from `greatstorage/core` to keep `devalue` out of your bundle entirely.
+The serializer is configurable on purpose. If you want `superjson`, or plain JSON for a more constrained setup, you can swap in your own `stringify` and `parse` methods and keep the rest of the API unchanged. If you bring your own serializer, import from `ultrastorage/core` to keep `devalue` out of your bundle entirely.
 
 ## Expiration is lazy on read
 
@@ -25,9 +25,9 @@ That split is deliberate. Reads that already need the value can pay the cleanup 
 
 ## Namespaces stay in their lane
 
-When you pass a `prefix`, `greatstorage` stores keys as `prefix + separator + key`. That isolates one logical namespace from another without requiring a separate storage backend.
+When you pass a `prefix`, `ultrastorage` stores keys as `prefix + separator + key`. That isolates one logical namespace from another without requiring a separate storage backend.
 
-It also means `clear()` only removes `greatstorage` entries in the current namespace. Keys written by other code, or values that were never written by `greatstorage` in the first place, are ignored rather than parsed opportunistically and guessed at.
+It also means `clear()` only removes `ultrastorage` entries in the current namespace. Keys written by other code, or values that were never written by `ultrastorage` in the first place, are ignored rather than parsed opportunistically and guessed at.
 
 ## Why a factory, not a class
 
@@ -39,4 +39,4 @@ It also matches the library's actual shape better: you're configuring a storage 
 
 Schema validation happens when values come back out of storage, not when they go in. That's the trust boundary that matters. Browser storage is user-tamperable, and even valid data at write time can become invalid later if your schema changes.
 
-So `getItem(key, { schema })` validates the retrieved value right before your app uses it. If validation fails, you get `null`. If the schema is async, `greatstorage` rejects it immediately rather than hiding asynchronous behavior behind a synchronous storage API.
+So `getItem(key, { schema })` validates the retrieved value right before your app uses it. If validation fails, you get `null`. If the schema is async, `ultrastorage` rejects it immediately rather than hiding asynchronous behavior behind a synchronous storage API.

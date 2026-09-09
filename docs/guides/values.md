@@ -4,7 +4,7 @@ description: 'Store rich JavaScript values, add TypeScript types, and initialize
 ---
 
 ```ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 
 const storage = createStorage();
 ```
@@ -77,6 +77,6 @@ storage.has('user'); // true
 storage.removeItem('user');
 storage.has('user'); // false
 
-storage.clear(); // remove all entries written by `greatstorage`
+storage.clear(); // remove all entries written by `ultrastorage`
 storage.clearExpired(); // remove only expired entries
 ```

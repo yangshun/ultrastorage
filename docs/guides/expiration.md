@@ -4,7 +4,7 @@ description: 'Set a TTL or an absolute expiration time and understand lazy clean
 ---
 
 ```ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 
 const storage = createStorage();
 ```

@@ -11,7 +11,7 @@ import {
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { validateEntry } from './entry';
 import { createSnapshotReader } from './snapshots';
-import type { GreatStorage, StorageOptions } from './types';
+import type { UltraStorage, StorageOptions } from './types';
 
 export interface UseStorageOptions<T> {
   /**
@@ -69,13 +69,13 @@ const getServerSnapshot = () => null;
  * Treat returned objects as immutable and replace them through the setter.
  * Rendering never writes defaults or removes expired entries. Expiration has
  * no timer; later reads or cleanup notifications reveal an expired value.
- * @param storage A factory-created instance from greatstorage or greatstorage/core.
+ * @param storage A factory-created instance from ultrastorage or ultrastorage/core.
  * @param key Key to observe; changing it switches the subscription.
  * @param options Display-only fallback and optional synchronous read schema.
  * @returns A readonly [value, setValue, removeValue] tuple.
  */
 export function useStorage<T>(
-  storage: GreatStorage,
+  storage: UltraStorage,
   key: string,
   options: {
     schema: StandardSchemaV1<unknown, T>;
@@ -84,18 +84,18 @@ export function useStorage<T>(
 ): UseStorageResult<T, Exclude<T, null>>;
 /** Subscribe with a default; null reads display that default without persisting it. */
 export function useStorage<T>(
-  storage: GreatStorage,
+  storage: UltraStorage,
   key: string,
   options: UseStorageOptions<T> & { defaultValue: Exclude<T, null | undefined> },
 ): UseStorageResult<T, Exclude<T, null>>;
 /** Subscribe to a typed key; without a default, missing or invalid values return null. */
 export function useStorage<T = unknown>(
-  storage: GreatStorage,
+  storage: UltraStorage,
   key: string,
   options?: UseStorageOptions<T>,
 ): UseStorageResult<T>;
 export function useStorage<T>(
-  storage: GreatStorage,
+  storage: UltraStorage,
   key: string,
   options?: UseStorageOptions<T>,
 ): UseStorageResult<T> {
@@ -146,7 +146,7 @@ function fallback<T>(options: UseStorageOptions<T> | undefined): T | null {
  * // Inside a component:
  * const [theme, setTheme] = usePreferences('theme', { defaultValue: 'light' });
  */
-export function createStorageHook(storage: GreatStorage): StorageHook {
+export function createStorageHook(storage: UltraStorage): StorageHook {
   return function useBoundStorage<T>(key: string, options?: UseStorageOptions<T>) {
     return useStorage(storage, key, options);
   } as StorageHook;

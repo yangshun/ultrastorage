@@ -1,20 +1,20 @@
 ---
-title: 'GreatStorage'
+title: 'ultrastorage'
 description: 'Gives localStorage superpowers: rich values, expiration, namespaces, validation, and subscriptions.'
 ---
 
-GreatStorage keeps the familiar Storage API and adds the features applications need. Use it directly from JavaScript or TypeScript, or subscribe from React.
+ultrastorage keeps the familiar Storage API and adds the features applications need. Use it directly from JavaScript or TypeScript, or subscribe from React.
 
 ## Install
 
 ```sh
-npm install greatstorage
+npm install ultrastorage
 ```
 
 ## Store your first value
 
 ```ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 
 const storage = createStorage({ prefix: 'app' });
 storage.setItem('user', { name: 'Alice', age: 30 });

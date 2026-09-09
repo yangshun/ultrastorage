@@ -4,7 +4,7 @@ description: 'Isolate storage keys with prefixes and configurable separators.'
 ---
 
 ```ts
-import { createStorage } from 'greatstorage';
+import { createStorage } from 'ultrastorage';
 ```
 
 Because your keys deserve their own personal space, away from whatever chaos other libraries left behind.
