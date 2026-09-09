@@ -40,25 +40,24 @@
     }
   },
   "scripts": {
-    "check": "pnpm format && pnpm lint && pnpm tc && pnpm test",
-    "build": "tsdown",
-    "prepublishOnly": "pnpm check && pnpm build",
-    "format": "oxfmt",
-    "lint": "oxlint",
-    "tc": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "check": "vp check",
+    "build": "vp pack",
+    "prepublishOnly": "vp check && vp test run && vp pack",
+    "format": "vp fmt",
+    "lint": "vp lint",
+    "tc": "vp check",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "prepare": "vp config"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
     "devalue": "^5"
   },
   "devDependencies": {
-    "oxfmt": "^0.36.0",
-    "oxlint": "^1.51.0",
-    "tsdown": "^0.20.3",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "typescript": "^7.0.2",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "packageManager": "pnpm@10.30.3"
 }

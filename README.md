@@ -373,6 +373,22 @@ So `getItem({ schema })` validates the retrieved value right before your app use
 - [storage-box](https://github.com/shahradelahi/storage-box) by Shahrad Elahi: simple `localStorage` wrapper with TTL support
 - [lscache](https://github.com/pamelafox/lscache) by Pamela Fox: `localStorage` wrapper with memcached-inspired expiration
 
+## Development
+
+This project uses [Vite+](https://viteplus.dev/guide/) with the Node.js version in
+`.node-version` and the package manager declared in `package.json`.
+
+```sh
+vp install
+vp check
+vp test
+vp pack
+```
+
+Use `vp pack` or `vp run build` to build this library, including ESM, CJS, and
+TypeScript declarations. `vp build` runs Vite's application build and expects an
+HTML entry point. Formatting, linting, and packaging options live in `vite.config.ts`.
+
 ## License
 
 MIT

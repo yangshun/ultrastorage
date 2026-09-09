@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { createStorage, createMemoryStorage } from './core-entry';
 
 describe('greatstorage/core', () => {

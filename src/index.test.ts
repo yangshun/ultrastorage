@@ -1,4 +1,4 @@
-import { describe, it, expect, expectTypeOf, vi, beforeEach } from 'vitest';
+import { describe, it, expect, expectTypeOf, vi, beforeEach } from 'vite-plus/test';
 import { createStorage, createMemoryStorage } from './index';
 import type { GreatStorage } from './types';
 
