@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
   <path
     d="M8 8v8c0 5 3 8 8 8s8-3 8-8V8"
-    stroke="#000"
+    stroke="white"
     stroke-width="3"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
   <path
     d="M12 11h8M12 15h8"
-    stroke="#000"
+    stroke="white"
     stroke-width="2"
     stroke-linecap="round"
   />

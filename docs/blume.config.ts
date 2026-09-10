@@ -9,7 +9,10 @@ export default defineConfig({
     include: ['*.md', 'guides/*.md', 'reference/*.md', 'reference/*.mdx', 'resources/*.md'],
   },
   github: { owner: 'yangshun', repo: 'ultrastorage', branch: 'main', dir: 'docs' },
-  logo: { image: '/icon.svg', text: 'ultrastorage' },
+  logo: {
+    image: { light: '/icon.svg', dark: '/icon-dark.svg', alt: 'ultrastorage' },
+    text: 'ultrastorage',
+  },
   theme: { accent: 'green', mode: 'system' },
   navigation: {
     sidebar: [

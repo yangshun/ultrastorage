@@ -1,0 +1,26 @@
+.prose {
+  color: var(--blume-foreground);
+  font-size: 16px;
+}
+
+.prose h1 {
+  font-size: 2.5rem;
+}
+
+.prose h2 {
+  font-size: 1.625rem;
+}
+
+.prose h3 {
+  font-size: 1.125rem;
+}
+
+@media (max-width: 40rem) {
+  .prose h1 {
+    font-size: 2rem;
+  }
+
+  .prose h2 {
+    font-size: 1.5rem;
+  }
+}
