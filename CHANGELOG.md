@@ -2,13 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.6.0 - 2026-09-10
+
+- Renamed the package from `greatstorage` to `ultrastorage` and the exported `GreatStorage` type to `UltraStorage`.
+- Added key-level subscriptions through `subscribe(key, listener)`, including same-page updates across instances sharing a backend and native cross-tab storage events.
+- Made the `UltraStorage` interface a strict superset of the native `Storage` interface.
 
 - New entries use the internal storage marker `__us`. Existing `__gs` entries remain supported without migration.
 - Added optional React 18/19 bindings through `ultrastorage/react`: `useStorage` and `createStorageHook`, with typed fallbacks, schema reads, functional updates, and expiration options.
 - Added cached, side-effect-free internal snapshots and SSR/hydration support. Core reads retain their existing fresh-object and lazy-cleanup behavior.
 - Deferred default `localStorage` access until the first operation, making instance construction safe on the server. Backend failures now occur on use rather than construction; no memory fallback is introduced.
 - Added adapter rendering, hydration, subscription, failure, and type coverage. `vp run test:coverage` enforces 100% runtime coverage.
+- Added documentation at https://ultrastorage.dev.
+
+### Upgrade notes
+
+- Replace the `greatstorage` dependency and import paths with `ultrastorage`, including `greatstorage/core` with `ultrastorage/core`. Rename type imports from `GreatStorage` to `UltraStorage`.
+- Existing `__gs` entries remain readable. Older versions cannot read newly written `__us` entries, so update applications that share the same storage together.
+- React remains optional. Install React 18 or 19 only when using `ultrastorage/react`.
+- Default storage is resolved on first use, so constructing an instance on the server is safe; operations still require an available storage backend.
 
 ## 0.5.0 - 2026-03-10
 
