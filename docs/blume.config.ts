@@ -6,14 +6,24 @@ export default defineConfig({
     'Gives localStorage superpowers: rich values, expiration, namespaces, schema validation, and subscriptions.',
   content: {
     root: '.',
-    include: ['*.md', 'guides/*.md', 'reference/*.md', 'reference/*.mdx', 'resources/*.md'],
+    include: [
+      '*.md',
+      '*.mdx',
+      'guides/*.md',
+      'reference/*.md',
+      'reference/*.mdx',
+      'resources/*.md',
+    ],
   },
   github: { owner: 'yangshun', repo: 'ultrastorage', branch: 'main', dir: 'docs' },
   logo: {
     image: { light: '/icon.svg', dark: '/icon-dark.svg', alt: 'ultrastorage' },
     text: 'ultrastorage',
   },
-  theme: { accent: 'green', mode: 'system' },
+  theme: {
+    accent: '#6d5dfc',
+    mode: 'system',
+  },
   navigation: {
     sidebar: [
       '/getting-started',

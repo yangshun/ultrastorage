@@ -1,0 +1,133 @@
+---
+title: 'localStorage, upgraded.'
+description: 'Store rich values, expire stale data, validate reads, subscribe to changes, and use it from React—all through the Storage API you already know.'
+---
+
+<div class="home-actions">
+  <a class="home-action home-action-primary" href="/getting-started">
+    Get started
+  </a>
+  <a class="home-action home-action-secondary" href="https://github.com/yangshun/ultrastorage">
+    View on GitHub
+  </a>
+</div>
+
+## Keep the API. Drop the chores.
+
+<div class="home-comparison">
+  <div class="home-comparison-header" aria-hidden="true">
+    <span>Plain localStorage</span>
+    <span></span>
+    <span>ultrastorage</span>
+  </div>
+
+<div class="home-comparison-row">
+  <p class="home-comparison-mobile-title">Objects</p>
+  <div class="home-comparison-side" data-label="Plain localStorage">
+    <code>{'JSON.stringify({ name: "Ada" })'}</code>
+    <span>Serialize the user before saving it</span>
+  </div>
+  <span class="home-comparison-arrow" aria-hidden="true">
+    →
+  </span>
+  <div class="home-comparison-side home-comparison-after" data-label="ultrastorage">
+    <code>{'setItem("user", { name: "Ada" })'}</code>
+    <span>Store and read the user as an object</span>
+  </div>
+</div>
+
+<div class="home-comparison-row">
+  <p class="home-comparison-mobile-title">Expiration</p>
+  <div class="home-comparison-side" data-label="Plain localStorage">
+    <code>{'setItem("otp", "4821")'}</code>
+    <span>Remove the OTP yourself after five minutes</span>
+  </div>
+  <span class="home-comparison-arrow" aria-hidden="true">
+    →
+  </span>
+  <div class="home-comparison-side home-comparison-after" data-label="ultrastorage">
+    <code>{'setItem("otp", 4821, { ttl: 3e5 })'}</code>
+    <span>Expire the OTP automatically after five minutes</span>
+  </div>
+</div>
+
+<div class="home-comparison-row">
+  <p class="home-comparison-mobile-title">Validation</p>
+  <div class="home-comparison-side" data-label="Plain localStorage">
+    <code>{'User.parse(JSON.parse(storedUser))'}</code>
+    <span>Parse and validate the saved user</span>
+  </div>
+  <span class="home-comparison-arrow" aria-hidden="true">
+    →
+  </span>
+  <div class="home-comparison-side home-comparison-after" data-label="ultrastorage">
+    <code>{'getItem("user", { schema: User })'}</code>
+    <span>Validate the saved user while reading it</span>
+  </div>
+</div>
+
+  <div class="home-comparison-row">
+    <p class="home-comparison-mobile-title">Subscriptions</p>
+    <div class="home-comparison-side" data-label="Plain localStorage">
+      <code>{'event.key === "cart" && syncCart()'}</code>
+      <span>Listen to every storage event and filter for cart</span>
+    </div>
+    <span class="home-comparison-arrow" aria-hidden="true">→</span>
+    <div class="home-comparison-side home-comparison-after" data-label="ultrastorage">
+      <code>{'subscribe("cart", syncCart)'}</code>
+      <span>React only when the cart changes</span>
+    </div>
+  </div>
+</div>
+
+## One familiar API. A lot less housekeeping.
+
+Create one shared instance, then read and write real JavaScript values without manual serialization.
+Add expiration and subscriptions only where you need them.
+
+```ts
+import { createStorage } from 'ultrastorage';
+
+const storage = createStorage({ prefix: 'editor' });
+
+storage.setItem(
+  'draft:post-42',
+  {
+    title: 'Introducing ultrastorage',
+    updatedAt: new Date(),
+    tags: new Set(['release', 'docs']),
+  },
+  { ttl: 86_400_000 },
+);
+
+storage.subscribe('draft:post-42', refreshPreview);
+```
+
+## Built for real application state
+
+<CardGroup cols={2}>
+  <Card title="Store JavaScript, not JSON" href="/guides/values" icon="braces" arrow>
+    Keep Dates, Maps, Sets, BigInts, RegExps, circular references, and more. Skip the
+    `JSON.stringify` dance.
+  </Card>
+  <Card title="Let stale data expire" href="/guides/expiration" icon="timer" arrow>
+    Give each write a TTL or absolute expiration time. Expired values behave like missing keys and
+    can be swept in one call.
+  </Card>
+  <Card title="Trust what you read" href="/guides/validation" icon="shield-check" arrow>
+    Validate persisted data with any synchronous Standard Schema library, including Zod, Valibot,
+    and ArkType.
+  </Card>
+  <Card title="Stay synchronized" href="/guides/subscriptions" icon="refresh-cw" arrow>
+    Subscribe to individual keys and react to writes from the same page, other instances, or other
+    browser tabs.
+  </Card>
+  <Card title="Give keys their own space" href="/guides/namespaces" icon="tags" arrow>
+    Prefix related keys, choose the separator, and clear your namespace without touching unrelated
+    browser storage.
+  </Card>
+  <Card title="Connect React without plumbing" href="/guides/react" icon="atom" arrow>
+    Use typed hooks, functional updates, stable snapshots, and server-rendering defaults with React
+    18 or 19.
+  </Card>
+</CardGroup>
