@@ -7,6 +7,7 @@ Gives `localStorage` superpowers. Handles serialization of rich types, key expir
 - **Store anything**: Stores `Set`, `Map`, `Date`, `RegExp`, `BigInt`, circular references, and more using [devalue](https://github.com/sveltejs/devalue)
 - **TTL / expiration**: Set a `ttl` in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing, can be removed on `getItem()`, and can be swept with `clearExpired()`
 - **Namespacing**: Isolate keys with a configurable `prefix` and `separator`
+- **Array keys**: Build structural keys from ordered string segments without separator collisions
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
 - **React hooks**: Optional [`ultrastorage/react` adapter](docs/guides/react.md) with typed values, functional updates, and server rendering
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
@@ -48,6 +49,19 @@ import { appStorage } from './lib/app-storage';
 appStorage.setItem('user', { name: 'Alice', age: 30 });
 appStorage.getItem('user'); // { name: 'Alice', age: 30 }
 ```
+
+### Array keys
+
+Use an array of strings when a key has several structural parts. Arrays with the same ordered
+segments address the same entry, even when they are different array instances.
+
+```ts
+appStorage.setItem(['users', userId, 'preferences'], { theme: 'dark' });
+appStorage.getItem(['users', userId, 'preferences']); // { theme: 'dark' }
+```
+
+Array keys use an opaque internal encoding rather than the configured namespace separator, so
+separator characters and empty strings inside segments are preserved.
 
 ### Store anything
 

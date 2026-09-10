@@ -27,6 +27,10 @@ That split is deliberate. Reads that already need the value can pay the cleanup 
 
 When you pass a `prefix`, `ultrastorage` stores keys as `prefix + separator + key`. That isolates one logical namespace from another without requiring a separate `Storage` object.
 
+Array keys are serialized from their ordered string segments before the namespace prefix is added.
+Their opaque JSON-based encoding preserves segment boundaries, empty strings, and separator
+characters. It does not depend on the configured namespace separator.
+
 It also means `clear()` only removes `ultrastorage` entries in the current namespace. Keys written by other code, or values that were never written by `ultrastorage` in the first place, are ignored rather than parsed opportunistically and guessed at.
 
 ## Why a factory, not a class

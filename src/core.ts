@@ -1,5 +1,6 @@
 import { decodeEntry, isStorageEntry, validateEntry } from './entry';
 import type { StorageEntryEnvelope } from './entry';
+import { deserializeStorageKey, serializeStorageKey } from './keys';
 import { registerSnapshotAccess } from './snapshots';
 import { batchNotifications, hasSubscribers, notify, subscribe } from './subscriptions';
 import type {
@@ -7,6 +8,7 @@ import type {
   GetOptions,
   UltraStorage,
   StorageChange,
+  StorageKey,
   StorageListener,
   StorageOptions,
 } from './types';
@@ -29,17 +31,17 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   const prefix = options.prefix ? options.prefix + separator : '';
   const serializer = options.serializer;
 
-  function prefixedKey(key: string): string {
-    return prefix + key;
+  function prefixedKey(key: StorageKey): string {
+    return prefix + serializeStorageKey(key);
   }
 
   // Decoding is shared with snapshot readers; expiration cleanup belongs only
   // to the public read path below.
-  function readEntry(key: string): StorageEntryEnvelope | null {
+  function readEntry(key: StorageKey): StorageEntryEnvelope | null {
     return decodeEntry(getBackend().getItem(prefixedKey(key)), serializer);
   }
 
-  function getItem<T = unknown>(key: string, options?: GetOptions<T>): T | null {
+  function getItem<T = unknown>(key: StorageKey, options?: GetOptions<T>): T | null {
     const entry = readEntry(key);
     if (entry === null) {
       return null;
@@ -69,21 +71,22 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     return null;
   }
 
-  function setItem<T = unknown>(key: string, value: T, options?: StorageOptions): void {
+  function setItem<T = unknown>(key: StorageKey, value: T, options?: StorageOptions): void {
     const expiry = resolveExpiry(options);
+    const serializedKey = serializeStorageKey(key);
 
     if (process.env.NODE_ENV !== 'production') {
-      if (value === null && !warned!.has(`null:${key}`)) {
-        warned!.add(`null:${key}`);
+      if (value === null && !warned!.has(`null:${serializedKey}`)) {
+        warned!.add(`null:${serializedKey}`);
         console.warn(
-          `[ultrastorage] Storing \`null\` for key "${key}". This is indistinguishable from a missing key when read back with \`getItem()\`. If you need to distinguish between "set to null" and "not set", consider using a sentinel value or pairing \`getItem()\` with \`has()\`.`,
+          `[ultrastorage] Storing \`null\` for key "${serializedKey}". This is indistinguishable from a missing key when read back with \`getItem()\`. If you need to distinguish between "set to null" and "not set", consider using a sentinel value or pairing \`getItem()\` with \`has()\`.`,
         );
       }
 
-      if (expiry != null && Date.now() > expiry && !warned!.has(`expiry:${key}`)) {
-        warned!.add(`expiry:${key}`);
+      if (expiry != null && Date.now() > expiry && !warned!.has(`expiry:${serializedKey}`)) {
+        warned!.add(`expiry:${serializedKey}`);
         console.warn(
-          `[ultrastorage] Key "${key}" is being stored with an expiry already in the past. It will be treated as expired immediately on the next read.`,
+          `[ultrastorage] Key "${serializedKey}" is being stored with an expiry already in the past. It will be treated as expired immediately on the next read.`,
         );
       }
     }
@@ -94,7 +97,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
       value,
       expiry,
     };
-    const rawKey = prefixedKey(key);
+    const rawKey = prefix + serializedKey;
     const raw = serializer.stringify(entry);
     const observed = hasSubscribers(getBackend(), rawKey);
     const previous = observed ? getBackend().getItem(rawKey) : null;
@@ -104,7 +107,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     }
   }
 
-  function getOrInit<T>(key: string, factory: () => T, options?: StorageOptions): T {
+  function getOrInit<T>(key: StorageKey, factory: () => T, options?: StorageOptions): T {
     const existing = getItem<T>(key);
     if (existing !== null) {
       return existing;
@@ -113,10 +116,11 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     const value = factory();
 
     if (process.env.NODE_ENV !== 'production') {
-      if (value === null && !warned!.has(`getOrInit:${key}`)) {
-        warned!.add(`getOrInit:${key}`);
+      const serializedKey = serializeStorageKey(key);
+      if (value === null && !warned!.has(`getOrInit:${serializedKey}`)) {
+        warned!.add(`getOrInit:${serializedKey}`);
         console.warn(
-          `[ultrastorage] \`getOrInit()\` factory for key "${key}" returned \`null\`. Since \`getItem()\` also returns \`null\` for missing keys, the factory will be called again on every \`getOrInit()\` call.`,
+          `[ultrastorage] \`getOrInit()\` factory for key "${serializedKey}" returned \`null\`. Since \`getItem()\` also returns \`null\` for missing keys, the factory will be called again on every \`getOrInit()\` call.`,
         );
       }
     }
@@ -126,7 +130,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   function updateItem<T = unknown>(
-    key: string,
+    key: StorageKey,
     updater: (value: T | null) => T,
     options?: StorageOptions,
   ): T {
@@ -136,7 +140,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     return updated;
   }
 
-  function removeItem(key: string): void {
+  function removeItem(key: StorageKey): void {
     removeStoredItem(prefixedKey(key), 'remove');
   }
 
@@ -202,7 +206,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     removeEntries((entry) => entry.expiry != null && Date.now() > entry.expiry, 'expire');
   }
 
-  function has(key: string): boolean {
+  function has(key: StorageKey): boolean {
     const raw = getBackend().getItem(prefixedKey(key));
 
     if (raw === null) {
@@ -225,12 +229,12 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     }
   }
 
-  function key(index: number): string | null {
+  function key(index: number): StorageKey | null {
     let count = 0;
     for (const [rawKey, entry] of entries()) {
       if (entry.expiry == null || Date.now() <= entry.expiry) {
         if (count === index) {
-          return prefix ? rawKey.slice(prefix.length) : rawKey;
+          return deserializeStorageKey(prefix ? rawKey.slice(prefix.length) : rawKey);
         }
         count++;
       }
@@ -238,9 +242,22 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     return null;
   }
 
+  function keys(): StorageKey[] {
+    const now = Date.now();
+    const result: StorageKey[] = [];
+    for (const [rawKey, entry] of entries()) {
+      if (entry.expiry == null || now <= entry.expiry) {
+        result.push(deserializeStorageKey(prefix ? rawKey.slice(prefix.length) : rawKey));
+      }
+    }
+    return result;
+  }
+
   const api = {
-    subscribe: (key: string, listener: StorageListener) =>
-      subscribe(getBackend(), prefixedKey(key), key, listener),
+    subscribe: (key: StorageKey, listener: StorageListener) => {
+      const serializedKey = serializeStorageKey(key);
+      return subscribe(getBackend(), prefix + serializedKey, serializedKey, listener);
+    },
     get length() {
       let count = 0;
       for (const [, entry] of entries()) {
@@ -256,6 +273,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     updateItem,
     removeItem,
     key,
+    keys,
     clear,
     clearExpired,
     has,

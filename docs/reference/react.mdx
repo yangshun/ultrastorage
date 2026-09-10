@@ -87,11 +87,11 @@ Use `useStorage()` when choosing the storage instance is part of the component's
 
 Keep the instance stable between renders unless you intend to switch stores. When several components always use the same shared instance, prefer `createStorageHook()` to avoid passing it repeatedly. Both APIs support changing keys, so a dynamic key alone does not require `useStorage()`.
 
-| Parameter | Type                   | Description                                                          |
-| --------- | ---------------------- | -------------------------------------------------------------------- |
-| `storage` | `UltraStorage`         | Factory-created instance from `ultrastorage` or `ultrastorage/core`. |
-| `key`     | `string`               | Key relative to the instance's namespace.                            |
-| `options` | `UseStorageOptions<T>` | Optional display fallback and synchronous read schema.               |
+| Parameter | Type                   | Description                                                           |
+| --------- | ---------------------- | --------------------------------------------------------------------- |
+| `storage` | `UltraStorage`         | Factory-created instance from `ultrastorage` or `ultrastorage/core`.  |
+| `key`     | `StorageKey`           | String or ordered array of string segments relative to the namespace. |
+| `options` | `UseStorageOptions<T>` | Optional display fallback and synchronous read schema.                |
 
 Here, `DailyCounter` receives its instance through props, so its parent chooses where the count is stored. The direct hook accepts the same read options as a bound hook. Write options go on the setter; this example uses an absolute `expiresAt` instead of a `ttl`:
 
@@ -140,7 +140,7 @@ Missing, expired, foreign, unparseable, invalid, and stored-null values use the 
 
 ### Instance and subscription behavior
 
-Setter and remover identities remain stable while the storage instance and key stay the same. Changes to hook options apply after commit; switching instances or keys switches subscriptions. Use factory-created ultrastorage instances from `ultrastorage` or `ultrastorage/core`; structural mocks or independently loaded package copies are not supported by the private snapshot bridge. For tests, wrap `createMemoryStorage()` with `createStorage()`.
+Setter and remover identities remain stable while the storage instance and structural key stay the same. Equivalent array keys do not switch subscriptions when recreated during render. Changes to hook options apply after commit; switching instances or keys switches subscriptions. Use factory-created ultrastorage instances from `ultrastorage` or `ultrastorage/core`; structural mocks or independently loaded package copies are not supported by the private snapshot bridge. For tests, wrap `createMemoryStorage()` with `createStorage()`.
 
 ## Exported types
 

@@ -10,8 +10,9 @@ import {
 } from 'react';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { validateEntry } from './entry';
+import { serializeStorageKey } from './keys';
 import { createSnapshotReader } from './snapshots';
-import type { UltraStorage, StorageOptions } from './types';
+import type { UltraStorage, StorageKey, StorageOptions } from './types';
 
 export interface UseStorageOptions<T> {
   /**
@@ -48,17 +49,17 @@ export type UseStorageResult<T, Current = T | null> = readonly [
 /** A hook bound to one instance, with the same options and result as useStorage. */
 export interface StorageHook {
   <T>(
-    key: string,
+    key: StorageKey,
     options: {
       schema: StandardSchemaV1<unknown, T>;
       defaultValue: NoInfer<Exclude<T, null | undefined>>;
     },
   ): UseStorageResult<T, Exclude<T, null>>;
   <T>(
-    key: string,
+    key: StorageKey,
     options: UseStorageOptions<T> & { defaultValue: Exclude<T, null | undefined> },
   ): UseStorageResult<T, Exclude<T, null>>;
-  <T = unknown>(key: string, options?: UseStorageOptions<T>): UseStorageResult<T>;
+  <T = unknown>(key: StorageKey, options?: UseStorageOptions<T>): UseStorageResult<T>;
 }
 
 const useCommittedEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
@@ -76,7 +77,7 @@ const getServerSnapshot = () => null;
  */
 export function useStorage<T>(
   storage: UltraStorage,
-  key: string,
+  key: StorageKey,
   options: {
     schema: StandardSchemaV1<unknown, T>;
     defaultValue: NoInfer<Exclude<T, null | undefined>>;
@@ -85,24 +86,28 @@ export function useStorage<T>(
 /** Subscribe with a default; null reads display that default without persisting it. */
 export function useStorage<T>(
   storage: UltraStorage,
-  key: string,
+  key: StorageKey,
   options: UseStorageOptions<T> & { defaultValue: Exclude<T, null | undefined> },
 ): UseStorageResult<T, Exclude<T, null>>;
 /** Subscribe to a typed key; without a default, missing or invalid values return null. */
 export function useStorage<T = unknown>(
   storage: UltraStorage,
-  key: string,
+  key: StorageKey,
   options?: UseStorageOptions<T>,
 ): UseStorageResult<T>;
 export function useStorage<T>(
   storage: UltraStorage,
-  key: string,
+  key: StorageKey,
   options?: UseStorageOptions<T>,
 ): UseStorageResult<T> {
-  const read = useMemo(() => createSnapshotReader(storage, key), [storage, key]);
+  const serializedKey = serializeStorageKey(key);
+  const read = useMemo(
+    () => createSnapshotReader(storage, serializedKey),
+    [storage, serializedKey],
+  );
   const subscribe = useCallback(
-    (listener: () => void) => storage.subscribe(key, listener),
-    [storage, key],
+    (listener: () => void) => storage.subscribe(serializedKey, listener),
+    [storage, serializedKey],
   );
   const snapshot = useSyncExternalStore(subscribe, read, getServerSnapshot);
   const schema = options?.schema;
@@ -124,11 +129,14 @@ export function useStorage<T>(
       } else {
         updated = next;
       }
-      storage.setItem(key, updated, writeOptions);
+      storage.setItem(serializedKey, updated, writeOptions);
     },
-    [storage, key, read],
+    [storage, serializedKey, read],
   );
-  const removeValue = useCallback(() => storage.removeItem(key), [storage, key]);
+  const removeValue = useCallback(
+    () => storage.removeItem(serializedKey),
+    [storage, serializedKey],
+  );
 
   return [value === null ? fallback(options) : value, setValue, removeValue];
 }
@@ -147,7 +155,7 @@ function fallback<T>(options: UseStorageOptions<T> | undefined): T | null {
  * const [theme, setTheme] = usePreferences('theme', { defaultValue: 'light' });
  */
 export function createStorageHook(storage: UltraStorage): StorageHook {
-  return function useBoundStorage<T>(key: string, options?: UseStorageOptions<T>) {
+  return function useBoundStorage<T>(key: StorageKey, options?: UseStorageOptions<T>) {
     return useStorage(storage, key, options);
   } as StorageHook;
 }

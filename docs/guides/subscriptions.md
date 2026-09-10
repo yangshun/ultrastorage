@@ -61,6 +61,21 @@ interface StorageChange {
 type StorageListener = (change: StorageChange) => void;
 ```
 
+When subscribing with an array key, `change.key` is its opaque serialized string. Passing that value
+to `getItem()` reads the changed entry.
+
+```ts
+const key = ['users', userId] as const;
+
+const unsubscribe = appStorage.subscribe(key, () => {
+  const user = appStorage.getItem(key);
+});
+
+appStorage.setItem(['users', userId], user); // Notifies the subscription.
+```
+
+Equivalent array values share a subscription even when they are different array instances.
+
 | Trigger                                         | Event                                   |
 | ----------------------------------------------- | --------------------------------------- |
 | `setItem()`, including writes through helpers   | `set`, `local`                          |

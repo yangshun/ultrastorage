@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import { createMemoryStorage, createStorage } from './index';
 import { createStorage as createCoreStorage } from './core-entry';
 import type { StorageChange, StorageListener } from './core-entry';
-import type { UltraStorage, StorageChange as DefaultStorageChange } from './index';
+import type { UltraStorage, StorageChange as DefaultStorageChange, StorageKey } from './index';
 
 describe('subscriptions', () => {
   let backend: Storage;
@@ -22,7 +22,7 @@ describe('subscriptions', () => {
     vi.useRealTimers();
   });
 
-  function watch(key: string, listener = vi.fn<StorageListener>(), instance = storage) {
+  function watch(key: StorageKey, listener = vi.fn<StorageListener>(), instance = storage) {
     const stop = instance.subscribe(key, listener);
     cleanups.push(stop);
     return { listener, stop };
@@ -51,6 +51,17 @@ describe('subscriptions', () => {
     storage.setItem('theme', 'dark');
     storage.removeItem('theme');
     expect(values).toEqual(['dark', null]);
+  });
+
+  it('matches equivalent array keys and reports their reusable serialized key', () => {
+    const { listener } = watch(['users', '42']);
+
+    storage.setItem(['users', '42'], 'Alice');
+
+    const change = listener.mock.calls[0]![0];
+    expect(change.key).toEqual(expect.any(String));
+    expect(change.key).not.toBe('users:42');
+    expect(storage.getItem(change.key)).toBe('Alice');
   });
 
   it('shares notifications with instances that never subscribe', () => {

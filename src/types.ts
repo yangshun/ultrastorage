@@ -22,9 +22,12 @@ export interface GetOptions<T> {
   schema: StandardSchemaV1<unknown, T>;
 }
 
+/** A string key or an array of string segments serialized as one opaque key. */
+export type StorageKey = string | readonly string[];
+
 /** A storage change. Read the current value with `getItem()`. */
 export interface StorageChange {
-  /** The key relative to the subscribing instance's prefix. */
+  /** The key relative to the prefix. Array keys use their serialized string form. */
   readonly key: string;
   readonly type: 'set' | 'remove' | 'expire';
   /** `local` includes other instances on this page; `external` means a browser storage event. */
@@ -40,10 +43,11 @@ interface UltraStorageExtensions {
    * Expiration is lazy: only expiration cleanup emits an event, not the passage of time.
    * Returns an unsubscribe function that is safe to call repeatedly.
    */
-  subscribe(key: string, listener: StorageListener): () => void;
+  subscribe(key: StorageKey, listener: StorageListener): () => void;
 
   /**
    * The number of non-expired entries in the current namespace.
+   * Scans stored entries on each access. Use `keys()` for full enumeration.
    */
   readonly length: number;
 
@@ -54,8 +58,8 @@ interface UltraStorageExtensions {
    * @param key - The storage key.
    * @param options - Optional. Pass `{ schema }` to validate the value against a Standard Schema.
    */
-  getItem<T>(key: string, options: GetOptions<T>): T | null;
-  getItem<T = unknown>(key: string): T | null;
+  getItem<T>(key: StorageKey, options: GetOptions<T>): T | null;
+  getItem<T = unknown>(key: StorageKey): T | null;
 
   /**
    * Serializes and stores a value, optionally with a TTL or absolute expiration time.
@@ -64,21 +68,33 @@ interface UltraStorageExtensions {
    * @param value - The value to store. Supports rich types like `Set`, `Map`, `Date`, etc.
    * @param options - Optional. Set `ttl` (milliseconds) or `expiresAt` (Date or timestamp).
    */
-  setItem<T = unknown>(key: string, value: T, options?: StorageOptions): void;
+  setItem<T = unknown>(key: StorageKey, value: T, options?: StorageOptions): void;
 
   /**
    * Removes a single entry by key.
    *
    * @param key - The storage key to remove.
    */
-  removeItem(key: string): void;
+  removeItem(key: StorageKey): void;
 
   /**
    * Returns the key at the given index among non-expired entries, or `null` if out of bounds.
+   * Keys are relative to the prefix. String keys remain strings, and array keys
+   * return fresh arrays of their original segments.
+   * Scans entries from the beginning. Use `keys()` for full enumeration.
    *
    * @param index - Zero-based index.
    */
-  key(index: number): string | null;
+  key(index: number): StorageKey | null;
+
+  /**
+   * Returns a fresh array of non-expired keys in the current namespace in one scan.
+   * Keys follow backend enumeration order and are relative to the prefix. String keys
+   * remain strings, and array keys return fresh arrays of their original segments.
+   * Expiration is checked at call time.
+   * Does not remove expired entries or notify subscribers.
+   */
+  keys(): StorageKey[];
 
   /**
    * Returns the existing value for `key`, or calls `factory()` to create, store, and return a new value.
@@ -87,7 +103,7 @@ interface UltraStorageExtensions {
    * @param factory - A function that produces the initial value if the key is missing or expired.
    * @param options - Optional. Same expiration options as `setItem`.
    */
-  getOrInit<T>(key: string, factory: () => T, options?: StorageOptions): T;
+  getOrInit<T>(key: StorageKey, factory: () => T, options?: StorageOptions): T;
 
   /**
    * Reads the current value, passes it through `updater`, stores the result, and returns it.
@@ -97,7 +113,7 @@ interface UltraStorageExtensions {
    * @param options - Optional. Same expiration options as `setItem`.
    */
   updateItem<T = unknown>(
-    key: string,
+    key: StorageKey,
     updater: (value: T | null) => T,
     options?: StorageOptions,
   ): T;
@@ -118,15 +134,17 @@ interface UltraStorageExtensions {
    *
    * @param key - The storage key to check.
    */
-  has(key: string): boolean;
+  has(key: StorageKey): boolean;
 }
 
 /**
- * `UltraStorage` is a strict superset of the web `Storage` interface.
- * It preserves the native API surface while adding typed reads, rich-value writes,
- * expiry support, and convenience helpers.
+ * UltraStorage provides familiar `Storage` methods, with typed reads, rich-value
+ * serialization, expiration, namespacing, and subscriptions.
+ * Reads return deserialized values; named property access is unsupported.
+ * Raw stored values require migration, and `clear()` only removes recognized
+ * entries within the configured namespace.
  */
-export type UltraStorage = UltraStorageExtensions & Storage;
+export type UltraStorage = UltraStorageExtensions;
 
 export interface Serializer {
   stringify: (value: unknown) => string;

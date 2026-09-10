@@ -1,6 +1,6 @@
 import { describe, it, expect, expectTypeOf, vi, beforeEach } from 'vite-plus/test';
 import { createStorage, createMemoryStorage } from './index';
-import type { UltraStorage } from './types';
+import type { StorageKey, UltraStorage } from './types';
 
 describe('ultrastorage', () => {
   let storage: ReturnType<typeof createStorage>;
@@ -12,13 +12,33 @@ describe('ultrastorage', () => {
     vi.restoreAllMocks();
   });
 
-  it('is assignable to the web Storage interface', () => {
-    const webStorage: Storage = storage;
+  it('is compatible with web Storage members except key', () => {
+    type CompatibleStorage = Pick<
+      Storage,
+      'length' | 'clear' | 'getItem' | 'removeItem' | 'setItem'
+    >;
+    const webStorage: CompatibleStorage = storage;
 
     webStorage.setItem('name', 'Alice');
 
     expect(webStorage.getItem('name')).toBe('Alice');
-    expectTypeOf<UltraStorage>().toMatchTypeOf<Storage>();
+    expectTypeOf<UltraStorage>().toMatchTypeOf<CompatibleStorage>();
+  });
+
+  it('declares only supported members', () => {
+    // Checked by TypeScript, never executed: native Storage's index signature
+    // must not allow misspelled methods or unsupported property access.
+    function typeErrors() {
+      // @ts-expect-error Unknown methods must be rejected.
+      storage.setItme('theme', 'dark');
+      // @ts-expect-error Stored values are accessed through getItem().
+      const theme = storage.theme;
+      return theme;
+    }
+
+    expectTypeOf(typeErrors).toBeFunction();
+    expectTypeOf(storage.key(0)).toEqualTypeOf<StorageKey | null>();
+    expectTypeOf(storage.keys()).toEqualTypeOf<StorageKey[]>();
   });
 
   it('uses the browser localStorage backend when none is provided', () => {
@@ -73,6 +93,39 @@ describe('ultrastorage', () => {
 
     it('returns null for non-existent key', () => {
       expect(storage.getItem('missing')).toBeNull();
+    });
+
+    it('supports array keys as structural string segments', () => {
+      const first = ['users', 'a:b'] as const;
+      const second = ['users:a', 'b'] as const;
+      const stringKey = '["users","a:b"]';
+
+      storage.setItem(first, 'first');
+      storage.setItem(second, 'second');
+      storage.setItem(stringKey, 'string');
+
+      expect(storage.getItem(first)).toBe('first');
+      expect(storage.getItem(['users', 'a:b'])).toBe('first');
+      expect(storage.getItem(second)).toBe('second');
+      expect(storage.getItem(stringKey)).toBe('string');
+      expect(storage.length).toBe(3);
+      expectTypeOf(first).toMatchTypeOf<StorageKey>();
+    });
+
+    it('uses array keys with helpers and returns their original shape from key', () => {
+      const key = ['counters', 'primary'] as const;
+
+      expect(storage.getOrInit(key, () => 1)).toBe(1);
+      expect(storage.updateItem<number>(key, (value) => value! + 1)).toBe(2);
+      expect(storage.has(key)).toBe(true);
+
+      const returnedKey = storage.key(0);
+      expect(returnedKey).toEqual(key);
+      expect(returnedKey).not.toBe(key);
+      expect(storage.getItem(returnedKey!)).toBe(2);
+
+      storage.removeItem(key);
+      expect(storage.has(key)).toBe(false);
     });
   });
 
@@ -602,6 +655,16 @@ describe('ultrastorage', () => {
       s.setItem('key', 'value');
       expect(mockStorage.getItem('ns/key')).not.toBeNull();
       expect(s.getItem('key')).toBe('value');
+    });
+
+    it('does not use the namespace separator to serialize array keys', () => {
+      const s = createStorage({ storage: mockStorage, prefix: 'ns', separator: '/' });
+      const key = ['users/active', '42'] as const;
+      s.setItem(key, 'value');
+
+      expect(s.getItem(key)).toBe('value');
+      expect(mockStorage.key(0)).toBe('ns/\u0000us:a:["users/active","42"]');
+      expect(s.key(0)).toEqual(key);
     });
 
     it('uses empty separator', () => {

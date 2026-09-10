@@ -7,6 +7,7 @@ export type {
   UltraStorage,
   Serializer,
   StorageChange,
+  StorageKey,
   StorageListener,
   StorageOptions,
 } from './types';

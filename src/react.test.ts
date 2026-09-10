@@ -51,6 +51,28 @@ describe('React storage hooks', () => {
     expect(second.result.current[0]).toBeNull();
   });
 
+  it('supports array keys without resubscribing for an equivalent inline array', () => {
+    const storage = createStorage({ storage: createMemoryStorage() });
+    const subscribe = vi.spyOn(storage, 'subscribe');
+    const hook = renderHook(
+      ({ id }) => useStorage<string>(storage, ['users', id], { defaultValue: 'missing' }),
+      { initialProps: { id: '42' } },
+    );
+
+    act(() => hook.result.current[1]('Alice'));
+    expect(storage.getItem(['users', '42'])).toBe('Alice');
+    expect(hook.result.current[0]).toBe('Alice');
+
+    const setter = hook.result.current[1];
+    hook.rerender({ id: '42' });
+    expect(hook.result.current[1]).toBe(setter);
+    expect(subscribe).toHaveBeenCalledTimes(1);
+
+    hook.rerender({ id: '43' });
+    expect(hook.result.current[0]).toBe('missing');
+    expect(subscribe).toHaveBeenCalledTimes(2);
+  });
+
   it('reads latest state for consecutive functional updates and supports expiration options', () => {
     vi.useFakeTimers({ toFake: ['Date'], now: 1000 });
     const storage = createStorage({ storage: createMemoryStorage() });
