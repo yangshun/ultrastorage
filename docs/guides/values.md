@@ -3,27 +3,27 @@ title: 'Reading and writing values'
 description: 'Store rich JavaScript values, add TypeScript types, and initialize or update entries.'
 ---
 
+`localStorage` only stores strings, so saving objects means repeatedly serializing and parsing them. Plain JSON also loses types such as `Date`, `Map`, and `Set`. ultrastorage handles serialization for you, letting you read and write JavaScript values directly, with helpers for initializing and updating stored data.
+
 ```ts
 import { createStorage } from 'ultrastorage';
 
-const storage = createStorage();
+const appStorage = createStorage({ prefix: 'my-app' });
 ```
 
 ## Rich values
 
-Yes, `localStorage` can finally handle a `Set`, or any data type you throw at it. It only took the entire JavaScript ecosystem to get here.
-
 Uses [devalue](https://github.com/sveltejs/devalue) by default, but you can bring your own serializer.
 
 ```ts
-storage.setItem('tags', new Set(['a', 'b', 'c']));
-storage.getItem('tags'); // Set {'a', 'b', 'c'}
+appStorage.setItem('tags', new Set(['a', 'b', 'c']));
+appStorage.getItem('tags'); // Set {'a', 'b', 'c'}
 
-storage.setItem('metadata', new Map([['key', 'value']]));
-storage.getItem('metadata'); // Map {'key' => 'value'}
+appStorage.setItem('metadata', new Map([['key', 'value']]));
+appStorage.getItem('metadata'); // Map {'key' => 'value'}
 
-storage.setItem('date', new Date('2025-01-01'));
-storage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
+appStorage.setItem('date', new Date('2025-01-01'));
+appStorage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
 ```
 
 ## TypeScript types
@@ -36,12 +36,12 @@ interface User {
   age: number;
 }
 
-const user = storage.getItem<User>('user');
+const user = appStorage.getItem<User>('user');
 // user is typed as User | null
 
-storage.getOrInit<User>('user', () => ({ name: 'Alice', age: 30 }));
+appStorage.getOrInit<User>('user', () => ({ name: 'Alice', age: 30 }));
 
-storage.updateItem<User>('user', (current) => ({
+appStorage.updateItem<User>('user', (current) => ({
   ...current!,
   age: current!.age + 1,
 }));
@@ -54,7 +54,7 @@ However, the true safe way is to validate with a [schema during read](/guides/va
 Get the value if it exists, or writes to storage if it doesn't. Either way, you're getting something back.
 
 ```ts
-const prefs = storage.getOrInit('prefs', () => ({
+const prefs = appStorage.getOrInit('prefs', () => ({
   theme: 'light',
   lang: 'en',
 }));
@@ -65,7 +65,7 @@ const prefs = storage.getOrInit('prefs', () => ({
 Read-modify-write in one call. Three separate statements was apparently too much work even when AI is writing all the code.
 
 ```ts
-storage.updateItem<number>('count', (current) => (current ?? 0) + 1);
+appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 ```
 
 ## Check, remove, and clear
@@ -73,10 +73,10 @@ storage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 The usual housekeeping. Someone has to take out the trash.
 
 ```ts
-storage.has('user'); // true
-storage.removeItem('user');
-storage.has('user'); // false
+appStorage.has('user'); // true
+appStorage.removeItem('user');
+appStorage.has('user'); // false
 
-storage.clear(); // remove all entries written by `ultrastorage`
-storage.clearExpired(); // remove only expired entries
+appStorage.clear(); // remove all entries written by `ultrastorage`
+appStorage.clearExpired(); // remove only expired entries
 ```

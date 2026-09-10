@@ -25,7 +25,7 @@ That split is deliberate. Reads that already need the value can pay the cleanup 
 
 ## Namespaces stay in their lane
 
-When you pass a `prefix`, `ultrastorage` stores keys as `prefix + separator + key`. That isolates one logical namespace from another without requiring a separate storage backend.
+When you pass a `prefix`, `ultrastorage` stores keys as `prefix + separator + key`. That isolates one logical namespace from another without requiring a separate `Storage` object.
 
 It also means `clear()` only removes `ultrastorage` entries in the current namespace. Keys written by other code, or values that were never written by `ultrastorage` in the first place, are ignored rather than parsed opportunistically and guessed at.
 
@@ -33,7 +33,7 @@ It also means `clear()` only removes `ultrastorage` entries in the current names
 
 `createStorage()` returns a plain object built from a closure instead of an instance of a class. That keeps helper functions and configuration genuinely private, avoids `this` binding nonsense when methods are destructured, and makes the result easy to mock in tests.
 
-It also matches the library's actual shape better: you're configuring a storage adapter around any `Storage`-compatible backend, whether that's `localStorage`, `sessionStorage`, or the in-memory implementation.
+It also matches the library's actual shape better: you're configuring an ultrastorage instance around any object that implements `Storage`, whether that's `localStorage`, `sessionStorage`, or the in-memory implementation.
 
 ## Why validation happens on read
 

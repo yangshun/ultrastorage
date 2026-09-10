@@ -28,46 +28,58 @@ All keys in `localStorage` share a single flat namespace per origin. When multip
 import { createMemoryStorage, createStorage } from 'ultrastorage';
 import { z } from 'zod';
 
-const storage = createStorage(); // defaults to localStorage, no prefix
+const appStorage = createStorage(); // defaults to localStorage, no prefix
 
 // Automatic serialization (primitives, objects, arrays)
-storage.setItem('user', { name: 'Alice', age: 30 });
-storage.getItem('user'); // → { name: 'Alice', age: 30 }
+appStorage.setItem('user', { name: 'Alice', age: 30 });
+appStorage.getItem('user'); // → { name: 'Alice', age: 30 }
 
 // Rich types (Set, Map, Date, RegExp)
-storage.setItem('tags', new Set(['a', 'b']));
-storage.getItem('tags'); // → Set {'a', 'b'}
+appStorage.setItem('tags', new Set(['a', 'b']));
+appStorage.getItem('tags'); // → Set {'a', 'b'}
 
-storage.setItem('created', new Date('2025-01-15'));
-storage.getItem('created'); // → Date 2025-01-15T00:00:00.000Z
+appStorage.setItem('created', new Date('2025-01-15'));
+appStorage.getItem('created'); // → Date 2025-01-15T00:00:00.000Z
 
 // TTL support
-storage.setItem('token', 'abc123', { ttl: 60_000 }); // expires in 60s
-storage.getItem('token'); // → 'abc123' (or null if expired)
+appStorage.setItem('token', 'abc123', { ttl: 60_000 }); // expires in 60s
+appStorage.getItem('token'); // → 'abc123' (or null if expired)
 
 // Utility methods
-storage.has('key'); // check existence (respects TTL)
-storage.removeItem('key'); // remove a single key
-storage.clear(); // remove all keys written by `ultrastorage`
-storage.clearExpired(); // proactively remove expired keys
+appStorage.has('key'); // check existence (respects TTL)
+appStorage.removeItem('key'); // remove a single key
+appStorage.clear(); // remove all keys written by `ultrastorage`
+appStorage.clearExpired(); // proactively remove expired keys
+```
 
-// Namespacing
-const appStorage = createStorage({ prefix: 'myapp', separator: ':' });
-appStorage.setItem('user', 'Alice'); // stored as "myapp:user"
+Namespacing:
+
+```ts
+const appStorage = createStorage({ prefix: 'my-app', separator: ':' });
+appStorage.setItem('user', 'Alice'); // stored as "my-app:user"
 appStorage.getItem('user'); // → 'Alice'
-appStorage.clear(); // only removes "myapp:*" keys
+appStorage.clear(); // only removes "my-app:*" keys
+```
 
-// Schema validation during read
+Schema validation during read:
+
+```ts
 const UserSchema = z.object({ name: z.string(), age: z.number() });
-storage.getItem('user', { schema: UserSchema }); // typed value or null
+appStorage.getItem('user', { schema: UserSchema }); // typed value or null
+```
 
-// Use a different storage backend
-const memoryStorage = createStorage({
+Use a different storage backend:
+
+```ts
+const appStorage = createStorage({
   storage: createMemoryStorage(),
 });
+```
 
-// Custom serializer (defaults to devalue)
-const customStorage = createStorage({
+Custom serializer (defaults to devalue):
+
+```ts
+const appStorage = createStorage({
   serializer: {
     stringify: JSON.stringify,
     parse: JSON.parse,
@@ -77,16 +89,16 @@ const customStorage = createStorage({
 
 ## Subscriptions
 
-`storage.subscribe(key, listener)` observes a single key relative to the instance prefix. It returns an idempotent unsubscribe function, and each registration is independent. Registration does not invoke the listener immediately.
+`appStorage.subscribe(key, listener)` observes a single key relative to the instance prefix. It returns an idempotent unsubscribe function, and each registration is independent. Registration does not invoke the listener immediately.
 
 ```ts
-const unsubscribe = storage.subscribe('theme', (change) => {
+const unsubscribe = appStorage.subscribe('theme', (change) => {
   // change: { key: string; type: 'set' | 'remove' | 'expire'; source: 'local' | 'external' }
-  const currentTheme = storage.getItem<string>('theme');
+  const currentTheme = appStorage.getItem<string>('theme');
   console.log(change.type, currentTheme);
 });
 
-storage.setItem('theme', 'dark');
+appStorage.setItem('theme', 'dark');
 unsubscribe();
 ```
 

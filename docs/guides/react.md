@@ -1,0 +1,161 @@
+---
+title: 'React'
+description: 'Consume storage and respond to changes with useStorage and createStorageHook.'
+---
+
+Reading a stored value does not tell React to rerender when it changes. Keeping components synchronized yourself also means managing subscriptions, stable snapshots, and server-rendering defaults. The React adapter handles these concerns and gives components a familiar value, setter, and removal callback.
+
+React 18 and 19 are supported through the `ultrastorage/react` entry point in the same package. React and its types are optional peers: applications using only the main or core entry point do not need React installed.
+
+In an existing React application, install `ultrastorage` and import the adapter from `ultrastorage/react`. There is no separate adapter package to install.
+
+## Which hook should I use?
+
+**Start with `createStorageHook()` for shared application storage.** Define a named hook such as `useAppStorage` alongside your storage instance, then import it wherever you need that data. This keeps components using the same configured instance without passing it to every hook call.
+
+| Situation                                                                                                   | Recommendation                                     |
+| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Several components use a shared instance, such as application preferences.                                  | Bind it once with `createStorageHook()`.           |
+| A reusable component receives its storage instance through props or context, or switches between instances. | Call `useStorage(storage, key, options)` directly. |
+| Only one component needs a key and a named hook would add unnecessary setup.                                | Calling `useStorage()` directly is also fine.      |
+
+`createStorageHook()` is a convenience wrapper around `useStorage()`: both have the same subscriptions, type inference, defaults, setters, and server-rendering behavior. The choice is how your component gets the storage instance. A changing key alone does not require `useStorage()`; bound hooks also accept a different key on each render.
+
+## Connect components to storage
+
+Create a shared storage instance and bind it with `createStorageHook()` outside components. Call the returned hook with the key you want to read; no provider is required.
+
+```ts app-storage.ts
+// create instances and bound hooks outside components
+import { createStorage } from 'ultrastorage';
+import { createStorageHook } from 'ultrastorage/react';
+
+export const appStorage = createStorage({ prefix: 'app' });
+export const useAppStorage = createStorageHook(appStorage);
+```
+
+```tsx theme-picker.tsx
+// use a Client Component in an RSC framework
+'use client';
+import { useAppStorage } from './app-storage';
+
+export function ThemePicker() {
+  const [theme, setTheme, removeTheme] = useAppStorage('theme', {
+    defaultValue: 'light',
+  });
+
+  return (
+    <>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>Theme: {theme}</button>
+      <button onClick={removeTheme}>Reset</button>
+    </>
+  );
+}
+```
+
+Components using the same key respond to writes through the hook, ordinary ultrastorage methods, other instances using the same `Storage` object, and browser storage events from other tabs.
+
+For a component that only displays a value, destructure the first tuple item:
+
+```tsx
+import { useAppStorage } from './app-storage';
+
+export function CurrentTheme() {
+  const [theme] = useAppStorage('theme', { defaultValue: 'light' });
+  return <p>Current theme: {theme}</p>;
+}
+```
+
+Mounting `ThemePicker` and `CurrentTheme` anywhere in the same app keeps both in sync. Calling `appStorage.setItem('theme', 'dark')` outside React also updates them. Defaults belong to each hook call: two consumers can display different defaults while the key is absent, so reuse the same default when they should agree.
+
+## Update and remove values
+
+Use the setter to replace a value or compute it from the latest persisted value. The remover resets the displayed value to its default. Continue using the shared `useAppStorage` hook:
+
+```tsx
+import { useAppStorage } from './app-storage';
+
+function Counter() {
+  const [count, setCount, removeCount] = useAppStorage<number>('count', {
+    defaultValue: 0,
+  });
+  return (
+    <>
+      <button onClick={() => setCount((previous) => previous + 1)}>Count: {count}</button>
+      <button onClick={() => setCount(0, { ttl: 60_000 })}>Reset for one minute</button>
+      <button onClick={removeCount}>Remove</button>
+    </>
+  );
+}
+```
+
+See the [React API reference](/reference/react) for read options, return values, and setter behavior.
+
+## Use a component-supplied instance
+
+Use `useStorage()` when the caller chooses the instance. This component can work with any factory-created ultrastorage instance passed by its parent:
+
+```tsx
+import type { UltraStorage } from 'ultrastorage';
+import { useStorage } from 'ultrastorage/react';
+
+export function ThemePicker({ storage }: { storage: UltraStorage }) {
+  const [theme, setTheme] = useStorage(storage, 'theme', { defaultValue: 'light' });
+
+  return (
+    <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>Theme: {theme}</button>
+  );
+}
+```
+
+Keep the supplied instance stable between renders unless you intend to change stores. Passing another instance switches the subscription. Call `useStorage()` directly in this case; create bound hooks outside components rather than calling `createStorageHook()` during rendering.
+
+## Schemas and types
+
+Use any synchronous Standard Schema implementation. For example, if your app uses Zod:
+
+```tsx
+import { z } from 'zod';
+import { useAppStorage } from './app-storage';
+
+const UserSchema = z.object({ name: z.string(), age: z.number() });
+
+export function Profile() {
+  const [user, setUser, removeUser] = useAppStorage('user', { schema: UserSchema });
+  // user: { name: string; age: number } | null
+  return (
+    <>
+      <p>{user?.name ?? 'No profile saved'}</p>
+      <button onClick={() => setUser({ name: 'Alice', age: 30 })}>Save profile</button>
+      <button onClick={removeUser}>Remove profile</button>
+    </>
+  );
+}
+```
+
+The schema determines the value and setter types. Without a schema, provide a generic such as `useAppStorage<User>('user')` or let a default infer the type. Generics provide compile-time types only; schemas also validate the stored data at runtime. A non-null, non-undefined default removes `null` even when the schema itself accepts null. Schema transformations apply before rendering and before a functional updater receives its input.
+
+## Snapshots and expiration
+
+Hook values retain object identity while their stored representation and schema stay unchanged. Treat returned objects as immutable, including Maps, Sets, and Dates. Return replacement values from updaters (for example, `previous => new Set([...previous, 'new'])`) instead of mutating the previous value. No deep freeze is applied. Inline schemas and object defaults are supported, but recreating them can change projected value identity.
+
+Rendering never deletes expired entries or writes defaults. There are no expiration timers: a mounted component is not scheduled to render just because time passes. A subsequent snapshot read recognizes expiration; `getItem()` or `clearExpired()` performs actual cleanup and notifies listeners. A write made directly through the configured `Storage` object schedules no same-page render, although a later snapshot read can observe it.
+
+### Replace rich values
+
+```tsx
+// Inside a component; useAppStorage is defined above.
+const [tags, setTags] = useAppStorage<Set<string>>('tags');
+
+function addTag(tag: string) {
+  setTags((previous) => new Set([...(previous ?? []), tag]));
+}
+```
+
+The updater receives the latest persisted value. It must return a replacement instead of mutating a previously rendered object.
+
+## Server rendering and errors
+
+`createStorage()` defers access to the default `localStorage` until an operation needs it, so module-level construction is safe on the server. The hooks render the default (or `null`) on the server and during initial hydration without reading saved data, including from an explicitly configured in-memory object. They switch to persisted browser data after hydration. Provide matching defaults on the server and client; there is no automatic server-data transfer. Only instance construction is safe without access to `localStorage` or another configured `Storage` object: calling ordinary storage methods still requires one to be available.
+
+Storage access, quota, serialization-on-write, updater, and thrown schema errors propagate. Async schemas throw. Validation failures reported as schema issues use the fallback. There is no optimistic update or silent fallback to memory after a failed write or inaccessible browser storage. Render-time errors can be handled by a React error boundary; handle setter errors in the calling event handler.

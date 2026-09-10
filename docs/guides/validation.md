@@ -3,13 +3,15 @@ title: 'Schema validation'
 description: 'Validate and transform stored values with a synchronous Standard Schema.'
 ---
 
+Persisted data can outlive the code that created it, and users or other scripts can change it. A TypeScript type alone cannot guarantee that a stored value still has the shape your application expects. Schema validation checks values when you read them, helping you handle outdated or invalid data before using it.
+
 ```ts
 import { createStorage } from 'ultrastorage';
 
-const storage = createStorage();
+const appStorage = createStorage({ prefix: 'my-app' });
 ```
 
-Trust no one — especially since browser storage is open to tampering by users. Validate with any libraries that support [Standard Schema](https://github.com/standard-schema/standard-schema), as long as validation is synchronous.
+Validate with any libraries that support [Standard Schema](https://github.com/standard-schema/standard-schema), as long as validation is synchronous.
 
 ```ts
 import { z } from 'zod';
@@ -17,7 +19,7 @@ import { z } from 'zod';
 const UserSchema = z.object({ name: z.string(), age: z.number() });
 
 // Returns typed value if valid, null if validation fails
-const user = storage.getItem('user', { schema: UserSchema });
+const user = appStorage.getItem('user', { schema: UserSchema });
 ```
 
 ## Read semantics
@@ -26,4 +28,4 @@ Validation happens on read, not on write. Invalid data reported as schema issues
 
 A TypeScript generic alone does not validate the persisted value. Browser storage can change outside your application, so use a schema when runtime validation matters.
 
-For inferred React values and defaults, see [React schemas and types](/react/schemas).
+For inferred React values and defaults, see [React schemas and types](/guides/react#schemas-and-types).
