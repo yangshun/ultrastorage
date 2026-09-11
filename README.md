@@ -6,7 +6,7 @@ Gives `localStorage` superpowers. Handles serialization of rich types, key expir
 
 - **Store anything**: Stores `Set`, `Map`, `Date`, `RegExp`, `BigInt`, circular references, and more using [devalue](https://github.com/sveltejs/devalue)
 - **TTL / expiration**: Set a `ttl` in milliseconds or an absolute `expiresAt` timestamp. Expired items are treated as missing, can be removed on `getItem()`, and can be swept with `clearExpired()`
-- **Namespacing**: Isolate keys with a configurable `prefix` and `separator`
+- **Namespacing**: Group related keys with a `prefix` and scope operations such as `clear()` to that namespace
 - **Array keys**: Build structural keys from ordered string segments without separator collisions
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
 - **React hooks**: Optional [`ultrastorage/react` adapter](docs/guides/react.md) with typed values, functional updates, and server rendering
@@ -84,7 +84,7 @@ appStorage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
 
 Store data temporarily. Like Snapchat, but for your storage keys.
 
-**Note**: Expired data behaves like a missing key. `getItem()` removes expired entries on read, while `has()`, `key()`, and `length` simply ignore them. Use `clearExpired()` to proactively sweep them.
+Expired data behaves like a missing key. `getItem()` removes expired entries on read, while `has()`, `key()`, `keys()`, and `length` simply ignore them. Use `clearExpired()` to proactively sweep them.
 
 ```ts
 // Expires in 60 seconds

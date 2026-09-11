@@ -15,7 +15,13 @@ import { createStorage } from 'ultrastorage';
 const appStorage = createStorage({ prefix: 'acme' });
 ```
 
-**Note**: Expired data behaves like a missing key. `getItem()` removes expired entries on read, while `has()`, `key()`, and `length` simply ignore them. Use `clearExpired()` to proactively sweep them.
+<Callout type="info" title="Expired entries are cleaned up lazily">
+
+Expired data behaves like a missing key. `getItem()` removes expired entries on read, while
+`has()`, `key()`, `keys()`, and `length` simply ignore them. Use `clearExpired()` to proactively
+sweep them.
+
+</Callout>
 
 ```ts
 // Expires in 60 seconds
@@ -30,12 +36,14 @@ appStorage.getItem('token'); // null (after 60s)
 
 ## Cleanup and notifications
 
-Passing an expiration timestamp does not schedule a timer or notify subscribers. Cleanup through `getItem()` or `clearExpired()` emits an `expire` event. Bookkeeping reads (`has()`, `key()`, and `length`) exclude expired entries without deleting them.
+Passing an expiration timestamp does not schedule a timer or notify subscribers. Cleanup through `getItem()` or `clearExpired()` emits an `expire` event. Bookkeeping reads (`has()`, `key()`, `keys()`, and `length`) exclude expired entries without deleting them.
 
 `ttl` and `expiresAt` cannot be used together. Both accept finite millisecond values; `expiresAt`
 also accepts a valid Date.
 
 An entry expires when the current time is strictly greater than its expiry timestamp. A new write
-without expiration options removes any previous expiration.
+without expiration options removes any previous expiration, including writes through `updateItem()`
+or a React setter. `getOrInit()` leaves expiration unchanged when it returns an existing value;
+see [initialization](/guides/values#initialize-a-value) and [updates](/guides/values#update-a-value).
 
 For React rendering, see [snapshots and expiration](/guides/react#snapshots-and-expiration).

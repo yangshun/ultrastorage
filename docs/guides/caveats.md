@@ -10,13 +10,20 @@ Before adopting ultrastorage or changing its configuration, understand how it ha
 entries, failed reads, expiration, and notifications. These details help you plan migrations and
 avoid unexpected behavior.
 
-- **Same-page writes must go through ultrastorage to notify**: Writes made directly through `localStorage`, `sessionStorage`, or a custom `Storage` object do not emit same-page notifications. Cross-tab browser events are still observed. Coordination is limited to instances sharing one loaded library runtime; separately bundled copies and mixed ESM/CJS runtimes do not share a registry.
-- **Use the React adapter for rendering**: `getItem()` returns fresh objects and can delete expired entries. `ultrastorage/react` supplies cached, side-effect-free snapshots internally; no public snapshot API is exposed.
-- **Still synchronous storage**: This wraps `localStorage`-style APIs, so reads and writes are still synchronous and still subject to browser storage quotas.
-- **Changing serializers can strand old entries**: Every storage API tries the configured serializer and then JSON, but values in another old format remain unreadable. If you ever need to change serializers, we recommend changing the `prefix` and using a new namespace.
-- **Expired entries are cleaned up lazily**: Expired data is hidden from reads immediately, but it may still occupy storage until `getItem()` touches it or `clearExpired()` is called.
-- **`null` means several things**: `getItem()` returns `null` for missing keys, expired entries, foreign values not written by `ultrastorage`, parse failures, and schema validation failures.
-- **Stored `null` and missing keys look the same**: If that distinction matters, pair `getItem()` with `has()`.
-- **Existing raw `localStorage` values are invisible**: This library only reads entries with its internal marker, so migrating older plain-string or plain-JSON data requires explicit migration code. You can use `getOrInit()` for this purpose, specifying a `factory` function that reads from the existing `localStorage` key.
-- **No atomic updates across tabs or callers**: `getOrInit()` and `updateItem()` are read-modify-write helpers, not transactional operations.
-- **Schema validation is sync-only and non-destructive**: Async schemas throw, and invalid stored values return `null` without being removed automatically.
+- **Namespaces can overlap**: A broad prefix includes matching nested prefixes, while an unprefixed instance can clear recognized entries across the backend; choose [non-overlapping prefixes](/guides/namespaces).
+- **Namespace changes need migration**: Changing `prefix` or `separator` does not rename existing entries and can make them inaccessible through the new configuration; keep [namespace settings](/guides/namespaces) stable or migrate the data explicitly.
+- **Reads and writes can throw**: Synchronous backend access, quota, serialization, and thrown schema errors propagate without a memory fallback; even expiration cleanup during a read can fail ([error handling](/reference/storage#error-handling)).
+- **Clearing skips unreadable entries**: Corrupted or unsupported envelopes can remain in storage after `clear()` and require [explicit migration or removal](/reference/storage#clear).
+- **Changing serializers can strand data**: JSON fallback runs only when the configured parser throws, so use a new prefix and plan [format migration](/guides/destinations#custom-serialization).
+- **Rich values have limits**: Functions, promises, symbols, and arbitrary class instances are rejected by default, while custom serializers may lose other values ([serialization limits](/guides/destinations#custom-serialization)).
+- **Existing raw values need migration**: Plain-string and plain-JSON entries are invisible until [explicitly migrated](/reference/storage#getorinit).
+- **`null` has several meanings**: Missing, expired, foreign, unparseable, schema-invalid, and stored-null values can all read as `null`; use [`has()`](/reference/storage#has) to distinguish a recognized stored-null entry from an absent one.
+- **Presence does not imply validity**: Bookkeeping and core helpers do not apply a schema; use [explicit read validation](/guides/validation#read-semantics).
+- **Validation does not rewrite storage**: Synchronous schemas leave invalid entries untouched and return transformations without saving them, while [React setters must write values the schema accepts](/guides/react#schemas-and-types).
+- **Helpers are synchronous and non-atomic**: Factories and updaters are not awaited, and read-modify-write operations can race across tabs or callers ([helper semantics](/guides/values#update-a-value)).
+- **Initialization can run again**: Stored `null` causes `getOrInit()` to call its factory again, and returning an existing value does not refresh its TTL ([initialization](/guides/values#initialize-a-value)).
+- **Updates replace expiration**: An `updateItem()` call without expiration options removes the previous TTL ([updating values](/guides/values#update-a-value)).
+- **Expiration has no timer**: Elapsed time alone triggers neither cleanup nor notifications, and expired entries can occupy storage until [lazy cleanup](/guides/expiration#cleanup-and-notifications).
+- **Same-page notifications require the same runtime**: Direct backend writes do not notify locally, and separately loaded package copies or mixed ESM/CJS runtimes do not share a registry ([subscriptions](/guides/subscriptions)).
+- **Use the React adapter for rendering**: Ordinary reads return fresh objects and can delete expired entries, while the adapter supplies [cached, side-effect-free snapshots](/guides/react#snapshots-and-expiration).
+- **Some string keys alias array keys**: Strings matching the [reserved array-key encoding](/reference/storage#reserved-array-key-encoding) address array keys and are returned as arrays during enumeration.

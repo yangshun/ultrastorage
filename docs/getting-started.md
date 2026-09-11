@@ -1,9 +1,16 @@
 ---
 title: 'Getting started'
-description: 'Install ultrastorage, create a shared instance, and choose the right entry point.'
+description: 'Start storing JavaScript values in the browser with ultrastorage, from setup to React integration.'
 ---
 
+Store objects, dates, and other JavaScript values in the browser without writing serialization code.
+ultrastorage adds expiration, namespaces, and subscriptions to familiar storage methods, with an
+optional React adapter to keep components in sync.
+
 ## Installation
+
+One package includes the storage API and optional React adapter, so you can start with ordinary
+JavaScript or TypeScript and add React integration when you need it.
 
 ```sh
 npm install ultrastorage
@@ -11,14 +18,8 @@ npm install ultrastorage
 
 ## Create a shared instance
 
-`createStorage()` returns a `Storage`-compatible object with familiar methods such as `getItem()`,
-`setItem()`, and `removeItem()`. For everyday reads and writes, you can replace `localStorage` with
-your shared instance.
-
-Creating an instance lets you choose options such as a key prefix, where values are stored
-(`localStorage`, `sessionStorage`, or memory), and how values are encoded.
-
-Export it once and reuse it so those settings stay consistent across your app.
+Use a shared storage instance so every part of your app reads and writes with the same namespace,
+backend, and serializer. Define it once in a module and import it wherever you need stored data.
 
 ```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
@@ -39,8 +40,12 @@ appStorage.getItem('theme'); // 'dark'
 appStorage.removeItem('theme');
 ```
 
-That's enough to get started. The same API also supports rich values and expiration without the
-`JSON.stringify` dance or manual cleanup.
+`getItem()` returns deserialized values, and `clear()` only removes recognized entries within the
+configured namespace. Use methods such as `getItem('theme')` instead of property access such as
+`storage.theme`. Existing raw `localStorage` values need explicit migration before this instance
+can read them; see [Caveats and migration](/guides/caveats).
+
+Store objects directly and add a TTL when data should only be used for a limited time:
 
 ```ts
 appStorage.setItem('user', { name: 'Alice', age: 30 }, { ttl: 5_000 });
@@ -51,6 +56,9 @@ appStorage.getItem('user'); // null
 ```
 
 ## Use with React
+
+For React apps, we recommend using the React adapter. It subscribes components to storage changes
+so your UI stays in sync, and provides a hook for reading, updating, and removing values.
 
 In a React 18 or 19 application, import `createStorageHook` from `ultrastorage/react` and bind it to
 your shared `appStorage` instance.
@@ -90,19 +98,26 @@ See the [React guide](/guides/react) for schemas, expiration, and server renderi
 
 ## Choose an entry point
 
+The import path determines which APIs and dependencies your app includes. Start with `ultrastorage`
+for default serialization, choose `ultrastorage/core` for your own serializer, and add
+`ultrastorage/react` for reactive components.
+
 | Import               | Use it for                                                          |
 | -------------------- | ------------------------------------------------------------------- |
 | `ultrastorage`       | Default devalue serialization, rich types, and all storage methods. |
 | `ultrastorage/core`  | Your own serializer, with no bundled devalue.                       |
 | `ultrastorage/react` | `useStorage` and `createStorageHook` for React 18 and 19.           |
 
-Create storage instances outside components and reuse them throughout your app. Construction is safe
-on the server because default localStorage access is deferred until the first operation.
+Constructing an instance is safe on the server because default localStorage access is deferred
+until the first operation.
 
 Ordinary reads and writes still require `localStorage` or another configured `Storage` object to be
 available; use [memory](/guides/destinations#save-values-in-memory) for server operations.
 
 ## Next steps
+
+Once you've saved your first value, explore the features your app needs next: typed reads,
+subscriptions, React integration, or migrating existing data.
 
 - [Read, write, and update values](/guides/values).
 - [Respond to storage changes](/guides/subscriptions).

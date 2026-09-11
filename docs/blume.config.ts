@@ -10,6 +10,7 @@ export default defineConfig({
       '*.md',
       '*.mdx',
       'guides/*.md',
+      'guides/*.mdx',
       'reference/*.md',
       'reference/*.mdx',
       'resources/*.md',

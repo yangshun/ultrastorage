@@ -31,22 +31,26 @@ bundle entirely.
 TTL support is implemented as metadata on the entry, not as a background cleanup job.
 
 When you call `getItem()`, expired entries are treated as missing and removed immediately. `has()`,
-`key()`, and `length` also treat expired entries as missing, but they do not mutate storage.
+`key()`, `keys()`, and `length` also treat expired entries as missing, but they do not mutate storage.
 
 That split is deliberate. Reads that already need the value can pay the cleanup cost, while
 bookkeeping-style operations stay predictable and side-effect free.
 
 If you want to proactively sweep old entries, `clearExpired()` is the explicit escape hatch.
 
-## Namespaces stay in their lane
+## Namespaces use prefix matching
 
-When you pass a `prefix`, `ultrastorage` stores keys as `prefix + separator + key`. That isolates one logical namespace from another without requiring a separate `Storage` object.
+When you pass a `prefix`, `ultrastorage` stores keys as `prefix + separator + key`. Namespace
+operations match that full prefix string, so a broader prefix also includes matching nested
+prefixes. Choose [non-overlapping prefixes](/guides/namespaces) for
+independently managed data; an unprefixed instance matches recognized entries across the backend.
 
 Array keys are serialized from their ordered string segments before the namespace prefix is added.
 Their opaque JSON-based encoding preserves segment boundaries, empty strings, and separator
 characters. It does not depend on the configured namespace separator.
 
-It also means `clear()` only removes `ultrastorage` entries in the current namespace. Keys written by other code, or values that were never written by `ultrastorage` in the first place, are ignored rather than parsed opportunistically and guessed at.
+`clear()` removes only recognized entries in that scope. Foreign data and unreadable envelopes
+are skipped; see [clearing and migration](/reference/storage#clear).
 
 ## Why a factory, not a class
 

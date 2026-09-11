@@ -162,6 +162,15 @@ only; schemas also validate the stored data at runtime.
 A non-null, non-undefined default removes `null` even when the schema itself accepts null. Schema
 transformations apply before rendering and before a functional updater receives its input.
 
+Setters accept the schema's output type, but writes are not validated or converted back to the
+schema's input type. The schema must accept the values you write on the next read. For example,
+`z.string().transform(Number)` reads a stored string as a number, but writing that number through
+the setter makes the next read fail validation and display the fallback.
+
+Choose a schema that accepts both the existing stored data and setter outputs. If transformed
+values should stay unchanged after saving, the transformation must also preserve already-normalized
+values. A read alone never migrates storage; see [schema transformations](/guides/validation#read-semantics).
+
 ## Snapshots and expiration
 
 Hook values retain object identity while their stored representation and schema stay unchanged.

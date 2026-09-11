@@ -64,4 +64,44 @@ const appStorage = createStorage({
 ```
 
 Changing serializers can make existing entries unreadable. Prefer a new prefix when changing
-formats; see the [migration caveats](/guides/caveats).
+formats and explicitly migrate any values you need to retain.
+
+<Callout type="info" title="Serialization limits">
+
+The default devalue serializer supports rich data, but rejects functions, promises, symbols, and
+arbitrary class instances. Serialization errors propagate from the write; see
+[error handling](/reference/storage#error-handling).
+
+</Callout>
+
+A custom serializer must synchronously encode and decode the entire storage envelope, including
+its value, marker, version, and expiration metadata. Its supported value types determine what you
+can store reliably.
+
+For example, plain JSON does not preserve `Map`, `Set`, or `Date` types, and drops object properties
+whose value is `undefined`. Storing `undefined` as the entry value drops the envelope's required
+`value` property:
+
+```ts
+const appStorage = createStorage({ prefix: 'acme', serializer: JSON });
+
+appStorage.setItem('optional', undefined);
+appStorage.getItem('optional'); // null: the stored envelope is not recognized
+appStorage.has('optional'); // false
+```
+
+<Callout type="info" title="JSON fallback only runs after a parser error">
+
+When decoding an entry, ultrastorage first calls the configured parser. It tries `JSON.parse()`
+only if that parser throws. A parser that successfully returns an unrecognized envelope does not
+trigger the JSON fallback.
+
+</Callout>
+
+Both paths still require a recognized storage envelope; fallback does not make raw strings or
+ordinary JSON values readable. Use [explicit migration](/reference/storage#getorinit) for those
+values.
+
+Entries left in an unreadable format still occupy backend storage, and `clear()` cannot remove
+them. Keep access to the old serializer while migrating, or remove known obsolete keys explicitly;
+see [clearing unreadable entries](/reference/storage#clear).

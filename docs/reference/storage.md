@@ -1,6 +1,6 @@
 ---
 title: 'Storage API'
-description: 'Factory options, typed reads, writes, expiration, subscriptions, and Storage-compatible methods.'
+description: 'Factory options, typed reads, writes, expiration, subscriptions, and key enumeration.'
 ---
 
 ## `createStorage()`
@@ -13,16 +13,27 @@ createStorage(options?: CreateStorageOptions): UltraStorage;
 
 All options are optional.
 
-| Option       | Type         | Default        | Description                                            |
-| ------------ | ------------ | -------------- | ------------------------------------------------------ |
-| `prefix`     | `string`     | —              | Key prefix for namespacing                             |
-| `separator`  | `string`     | `":"`          | Separator between prefix and key                       |
-| `storage`    | `Storage`    | `localStorage` | Where values are saved                                 |
-| `serializer` | `Serializer` | `devalue`      | Custom serializer with `stringify` and `parse` methods |
+| Option       | Type         | Default        | Description                                                |
+| ------------ | ------------ | -------------- | ---------------------------------------------------------- |
+| `prefix`     | `string`     | —              | Key prefix for namespacing                                 |
+| `separator`  | `string`     | `":"`          | Advanced override for the separator between prefix and key |
+| `storage`    | `Storage`    | `localStorage` | Where values are saved                                     |
+| `serializer` | `Serializer` | `devalue`      | Custom serializer with `stringify` and `parse` methods     |
+
+Keep the default `:` separator unless you need to match an existing stored-key convention; see
+[custom separators](/guides/namespaces#custom-separators). Changing `prefix` or `separator` after
+writing data requires explicit migration to keep existing entries accessible through the new
+configuration.
 
 Also available from `ultrastorage/core` where `serializer` is **required** and `devalue` is not bundled. See [Custom serializer](/guides/destinations#custom-serialization).
 
-Returns a `UltraStorage` instance, that has the same interface as [`Storage`](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), with additional APIs.
+Returns an `UltraStorage` instance. ultrastorage provides familiar `Storage` methods, with typed
+reads, rich-value serialization, expiration, namespacing, and subscriptions.
+
+`getItem()` returns deserialized values rather than always returning strings. Named property access
+such as `storage.theme` is unsupported; use `getItem('theme')` and `setItem('theme', value)`.
+Existing raw storage values require [explicit migration](/guides/caveats), and `clear()` only removes
+recognized entries within the configured namespace.
 
 Create and reuse a namespaced instance for application state:
 
@@ -70,6 +81,20 @@ appStorage.getItem(['users', userId]);
 // { name: 'Alice', role: 'admin' }
 ```
 
+#### Reserved array-key encoding
+
+Avoid authoring string keys beginning with `\u0000us:a:`, the reserved prefix used to encode array
+keys. A string that exactly matches a canonical array encoding addresses the same entry:
+
+```ts
+appStorage.setItem(['users', '42'], 'Alice');
+appStorage.getItem('\u0000us:a:["users","42"]'); // 'Alice'
+```
+
+`key()` and `keys()` return such a key as an array even if it was originally passed as an encoded
+string. Other string keys remain strings. Use the original array when addressing an array key;
+subscription events also supply a reusable encoded string through `change.key`.
+
 ### `getItem()`
 
 Retrieves and deserializes a stored value.
@@ -84,6 +109,10 @@ appStorage.getItem<T>(
 ```
 
 Returns `null` if the key is missing, expired, or fails the supplied [schema validation](https://github.com/standard-schema/standard-schema). If the entry is expired, `getItem()` removes it from storage.
+
+Foreign values, unrecognized envelopes, and entries that cannot be parsed also return `null`.
+Backend access failures, failed expiration cleanup, and thrown schema errors propagate; see
+[error handling](#error-handling).
 
 Options:
 
@@ -158,6 +187,10 @@ appStorage.has(key: StorageKey): boolean;
 
 Expired entries are treated as missing and are not removed by `has()`.
 
+This checks for a recognized, non-expired entry, including stored `null`. It does not apply schema
+validation, so it can return `true` while a [validated read](/guides/validation#read-semantics)
+returns `null`.
+
 ```ts
 if (!appStorage.has('preferences')) {
   appStorage.setItem('preferences', { theme: 'system' });
@@ -166,13 +199,23 @@ if (!appStorage.has('preferences')) {
 
 ### `clear()`
 
-Removes all entries written by `ultrastorage` in the current namespace.
+Removes all recognized entries in the current namespace, including expired entries.
 
 ```ts
 appStorage.clear(): void;
 ```
 
 Entries outside the namespace and values not written by `ultrastorage` are left untouched.
+
+Corrupted envelopes, unsupported format versions, and entries unreadable by the configured parser
+and its JSON fallback are also skipped. They can remain in the backend and occupy space after
+`clear()` or `clearExpired()`. To discard a known unreadable entry, call `removeItem(key)`; it does
+not require the value to be readable. During a format migration, use the old serializer to read
+entries you need to retain before removing them.
+
+Scope follows string-prefix matching: overlapping prefixes can include each other's data, and an
+instance without a prefix matches recognized entries across the backend. See
+[namespace overlap](/guides/namespaces).
 
 ```ts
 appStorage.setItem('theme', 'dark');
@@ -205,7 +248,7 @@ Options:
 
 `ttl` and `expiresAt` cannot be used together.
 
-Initialize a value only when the key is missing or expired:
+Initialize a value when an ordinary read returns `null`:
 
 ```ts
 const preferences = appStorage.getOrInit('preferences', () => ({
@@ -213,6 +256,13 @@ const preferences = appStorage.getOrInit('preferences', () => ({
   locale: 'en',
 }));
 ```
+
+This includes missing, expired, unreadable, and stored-null values. A factory returning `null` runs
+again on the next call. Existing non-null values are returned without schema validation or changes
+to their expiration; options apply only when the factory result is written.
+
+Factories must be synchronous, and initialization is not atomic across tabs or concurrent callers;
+see [synchronous helpers](/guides/values#update-a-value).
 
 `getOrInit()` is useful for migrating from an existing `localStorage` (but non-`ultrastorage`) key. To do that, specify a `factory` function that reads from the existing `localStorage` key.
 
@@ -245,6 +295,10 @@ Options:
 const count = appStorage.updateItem<number>('cart-count', (current) => (current ?? 0) + 1);
 // 1 when the key was previously missing
 ```
+
+Omitting expiration options removes the previous TTL; passing a TTL starts a new lifetime from
+this write. The updater must be synchronous and receives the value without schema validation.
+Updates are not atomic across tabs or concurrent callers; see [synchronous helpers](/guides/values#update-a-value).
 
 ### `subscribe()`
 
@@ -286,6 +340,9 @@ appStorage.setItem('search-results', ['first', 'second'], { ttl: 5 * 60_000 });
 appStorage.clearExpired();
 ```
 
+Only recognized entries can be checked for expiration; unreadable entries are skipped, as with
+[`clear()`](#clear).
+
 ### `length`
 
 The number of non-expired entries in the current namespace.
@@ -318,8 +375,9 @@ Expired entries are skipped but not removed. Each call scans and decodes entries
 until it reaches the requested index. Repeated calls to enumerate every key perform quadratic
 work; use `keys()` for full enumeration.
 
-Keys are returned relative to the prefix. String keys remain strings, and array keys are restored
-as fresh arrays containing their original segments. Every returned key can be passed directly to
+Keys are returned relative to the prefix. Array keys are restored as fresh arrays containing their
+original segments; string keys remain strings except for [reserved array encodings](#reserved-array-key-encoding).
+Every returned key can be passed directly to
 `getItem()`, `removeItem()`, and other key-taking methods. This return type differs from native
 `Storage.key()`, which returns only strings or `null`.
 
@@ -345,8 +403,9 @@ This method scans the backend once and decodes each matching entry once. Expirat
 against the time when the call starts. Expired and foreign entries are skipped without removing
 anything or notifying subscribers.
 
-Keys are returned relative to the prefix. String keys remain strings, and array keys are restored
-as fresh arrays containing their original segments. Every returned key can be passed directly to
+Keys are returned relative to the prefix. Array keys are restored as fresh arrays containing their
+original segments; string keys remain strings except for [reserved array encodings](#reserved-array-key-encoding).
+Every returned key can be passed directly to
 `getItem()`, `removeItem()`, and other key-taking methods.
 
 ```ts
@@ -372,6 +431,21 @@ for (const key of appStorage.keys()) {
   appStorage.removeItem(key);
 }
 ```
+
+## Error handling
+
+Storage operations are synchronous and remain subject to backend access restrictions and storage
+quotas. Backend exceptions, serialization errors on writes, factory or updater exceptions, and
+thrown schema errors propagate to the caller. Async schemas throw a `TypeError`.
+
+Even a read can fail: `getItem()` removes expired entries, so a backend removal error is thrown
+instead of returning `null`. In contrast, unrecognized data and schema issues return `null`, and
+parser errors follow the [JSON fallback rules](/guides/destinations#custom-serialization).
+
+Handle failures where you call the API; ultrastorage does not silently substitute an in-memory
+backend. Bulk clearing can partially complete before a backend error, with no rollback. Completed
+removals still notify subscribers. Subscriber exceptions are handled separately and do not turn a
+completed write into a failure; see [event delivery](/guides/subscriptions#events-and-delivery).
 
 ## `createMemoryStorage()`
 

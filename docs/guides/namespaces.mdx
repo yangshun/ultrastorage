@@ -1,0 +1,82 @@
+---
+title: 'Namespaces'
+description: 'Group storage keys with prefixes and keep operations scoped to a namespace.'
+---
+
+Applications and libraries on the same origin share `localStorage`, making common keys such as `user`
+or `theme` easy to overwrite accidentally.
+
+Namespaces give your keys a configurable prefix and keep operations such as `clear()` scoped to
+that namespace. This lets different parts of your application manage their data independently.
+
+```ts
+import { createStorage } from 'ultrastorage';
+```
+
+```ts
+const appStorage = createStorage({ prefix: 'acme' });
+
+appStorage.setItem('theme', 'dark'); // stored as "acme:theme"
+appStorage.getItem('theme'); // 'dark'
+
+localStorage.getItem('theme'); // null
+
+// clear() only removes keys within the namespace
+appStorage.clear();
+```
+
+Keep the prefix stable once data has been written. Changing it from `acme` to `my-app` makes
+`theme` address `my-app:theme` instead of `acme:theme`. Existing entries are not renamed
+automatically; they remain stored and may no longer be found by reads, enumeration, or clearing
+through the new configuration. Explicitly migrate existing entries if you need to change the
+prefix.
+
+<Callout type="warning" title="Avoid overlapping prefixes">
+
+An `acme` namespace matches stored keys starting with `acme:`, including those written by an
+`acme:admin` instance. Clearing the broader namespace can remove entries from both. Choose
+non-overlapping prefixes, such as `acme-app` and `acme-admin`, for independently managed data.
+
+</Callout>
+
+For example, these instances share part of their storage scope:
+
+```ts
+const appStorage = createStorage({ prefix: 'acme' });
+const adminStorage = createStorage({ prefix: 'acme:admin' });
+
+adminStorage.setItem('theme', 'dark'); // stored as "acme:admin:theme"
+appStorage.keys(); // ['admin:theme']
+
+appStorage.clear();
+adminStorage.getItem('theme'); // null
+```
+
+An instance with no prefix, or an empty prefix, matches recognized entries across the entire
+backend. Its `keys()`, `key()`, `length`, `clear()`, and `clearExpired()` can include entries from
+every namespace that its serializer can read.
+
+Keys passed to methods and returned in subscription events are relative to the subscribing
+instance's prefix. Instances share notifications only when they use the exact same `Storage` object
+and their fully prefixed keys match.
+
+Use compatible serializers when multiple instances read the same data.
+
+## Custom separators
+
+By default, `:` separates the namespace prefix from the key. The `separator` option lets you
+override this for advanced use cases such as matching an existing stored-key convention. Keep
+the default for new namespaces. To access entries already stored with another separator,
+configure the instance to match:
+
+```ts
+const appStorage = createStorage({ prefix: 'acme', separator: '/' });
+appStorage.setItem('theme', 'dark'); // stored key: acme/theme
+```
+
+As with `prefix`, changing `separator` after writing data requires explicit migration:
+`acme:theme` and `acme/theme` are different stored keys. Existing entries are not renamed
+automatically.
+
+The separator is only placed between the namespace prefix and the key. Check the complete prefix
+including any custom separator; an empty separator can also make prefixes overlap.

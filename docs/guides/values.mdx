@@ -30,6 +30,9 @@ appStorage.setItem('date', new Date('2025-01-01'));
 appStorage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
 ```
 
+Supported values depend on the serializer; see [serialization limits](/guides/destinations#custom-serialization)
+for unsupported values and differences when using plain JSON.
+
 ## TypeScript types
 
 Pass a type argument to describe the expected shape of a stored value.
@@ -66,6 +69,13 @@ const prefs = appStorage.getOrInit('prefs', () => ({
 }));
 ```
 
+The factory runs whenever the ordinary read returns `null`, including stored `null`, expired
+entries, and unreadable data. If the factory returns `null`, it will run again on the next call.
+Use `has()` alongside `getItem()` when stored `null` must be distinguished from a missing entry.
+
+Expiration options apply only when the factory's value is written. Returning an existing value
+does not refresh or replace its expiration.
+
 ## Update a value
 
 Read, modify, and write a value in one call.
@@ -73,6 +83,29 @@ Read, modify, and write a value in one call.
 ```ts
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 ```
+
+Every update is a new write. Omitting expiration options removes any previous TTL; passing a TTL
+starts a new lifetime from the update:
+
+```ts
+appStorage.setItem('count', 1, { ttl: 60_000 });
+appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
+// 'count' now has no expiration.
+
+appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1, { ttl: 60_000 });
+// 'count' now expires 60 seconds after this update.
+```
+
+<Callout type="warning" title="Helpers are synchronous and non-atomic">
+
+Factories and updaters must return synchronously: promises are passed directly to the serializer
+without being awaited and are rejected by the default serializer. Finish asynchronous work before
+calling the storage methods. `getOrInit()` and `updateItem()` are not atomic across tabs or
+concurrent callers.
+
+</Callout>
+
+Both helpers read without a schema; see [presence and validation](/guides/validation#read-semantics).
 
 ## Array keys
 
@@ -124,6 +157,10 @@ appStorage.has('user'); // true
 appStorage.removeItem('user');
 appStorage.has('user'); // false
 
-appStorage.clear(); // remove all entries written by `ultrastorage`
+appStorage.clear(); // remove recognized entries in this namespace
 appStorage.clearExpired(); // remove only expired entries
 ```
+
+Clearing skips unreadable entries; see [`clear()`](/reference/storage#clear) for migration and
+removal behavior. Reads and writes can also throw; handle [storage errors](/reference/storage#error-handling)
+where you call them.
