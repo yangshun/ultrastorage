@@ -35,29 +35,42 @@ appStorage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
 Supported values depend on the serializer; see [serialization limits](/guides/destinations#custom-serialization)
 for unsupported values and differences when using plain JSON.
 
-## TypeScript types
+## Import an existing value
 
-Pass a type argument to describe the expected shape of a stored value.
+Pass `legacy` to `getItem()` to import a value previously saved directly to the storage backend.
+The destination uses your instance's prefix; `legacy.key` is the exact old key.
 
 ```ts app.ts
-interface User {
-  name: string;
-  age: number;
-}
-
-const user = appStorage.getItem<User>('user');
-// user is typed as User | null
-
-appStorage.getOrInit<User>('user', () => ({ name: 'Alice', age: 30 }));
-
-appStorage.updateItem<User>('user', (current) => ({
-  ...current!,
-  age: current!.age + 1,
-}));
+const theme = appStorage.getItem<string>('theme', {
+  legacy: {
+    key: 'theme',
+    deserialize: (raw) => raw,
+  },
+});
+// Reads 'acme:theme' first. If missing, imports 'theme' and removes the old key.
 ```
 
-Type arguments do not validate stored data at runtime. Use a [schema during read](/guides/validation)
-when validation is required.
+The required `deserialize` callback runs synchronously. Use `JSON.parse` for JSON values, or a
+custom callback to reshape old data. Add a [schema](/guides/validation) to validate its output:
+
+```ts app.ts
+import { z } from 'zod';
+
+const preferences = appStorage.getItem('preferences', {
+  legacy: {
+    key: 'old-preferences',
+    deserialize: JSON.parse,
+  },
+  schema: z.object({ theme: z.enum(['light', 'dark']) }),
+});
+```
+
+Importing only runs when the destination is physically missing. A successful import stores the
+decoded or schema-transformed value without expiration, then removes the legacy key. Decoder
+exceptions or validation issues return `null` and preserve the source; backend failures throw.
+
+An importing read can write and notify subscribers. See [import behavior](/guides/caveats#import-behavior)
+for existing and expired destinations, cleanup failures, and React usage.
 
 ## Initialize a value
 
@@ -147,6 +160,30 @@ appStorage.getItem(['users:a', 'b']); // 'second'
 ```
 
 See [`StorageKey`](/reference/storage#storagekey) for the complete key contract.
+
+## Typing your values
+
+Pass a type argument to describe the expected shape of a stored value.
+
+```ts app.ts
+interface User {
+  name: string;
+  age: number;
+}
+
+const user = appStorage.getItem<User>('user');
+// user is typed as User | null
+
+appStorage.getOrInit<User>('user', () => ({ name: 'Alice', age: 30 }));
+
+appStorage.updateItem<User>('user', (current) => ({
+  ...current!,
+  age: current!.age + 1,
+}));
+```
+
+Type arguments do not validate stored data at runtime. Use a [schema during read](/guides/validation)
+when validation is required.
 
 ## Check, remove, and clear
 

@@ -16,12 +16,26 @@ export interface StorageOptions {
   expiresAt?: Date | number;
 }
 
-export interface GetOptions<T> {
+export interface LegacyOptions {
+  /** Exact key in the same backend, without the instance prefix. */
+  key: string;
+  /** Synchronously decode the legacy string. Thrown errors return null and preserve the source. */
+  deserialize: (raw: string) => unknown;
+}
+
+export interface GetOptions<T = unknown> {
+  /**
+   * Import only when the destination is physically missing. Successful imports
+   * persist the validated output without expiration, then remove the legacy key.
+   * Backend, serialization, and thrown schema errors propagate.
+   */
+  legacy?: LegacyOptions;
+
   /**
    * A Standard Schema to validate the retrieved value against.
    * If validation fails, `getItem` returns `null`.
    */
-  schema: StandardSchemaV1<unknown, T>;
+  schema?: StandardSchemaV1<unknown, T>;
 }
 
 /** A string key or an array of string segments serialized as one opaque key. */
@@ -58,9 +72,10 @@ interface UltraStorageExtensions {
    * Returns `null` if the key is missing, the entry has expired, or schema validation fails.
    *
    * @param key - The storage key.
-   * @param options - Optional. Pass `{ schema }` to validate the value against a Standard Schema.
+   * @param options - Optional schema validation and legacy import fallback.
+   * Legacy imports write without expiration and remove the source after a successful write.
    */
-  getItem<T>(key: StorageKey, options: GetOptions<T>): T | null;
+  getItem<T = unknown>(key: StorageKey, options: GetOptions<T>): T | null;
   getItem<T = unknown>(key: StorageKey): T | null;
 
   /**

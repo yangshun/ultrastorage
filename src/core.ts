@@ -1,4 +1,4 @@
-import { decodeEntry, validateEntry } from './entry';
+import { decodeEntry, isPromiseLike, validateEntry, validateValue } from './entry';
 import type { StorageEntryEnvelope } from './entry';
 import { deserializeStorageKey, serializeStorageKey } from './keys';
 import { registerSnapshotAccess } from './snapshots';
@@ -56,7 +56,12 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   function getItem<T = unknown>(key: StorageKey, options?: GetOptions<T>): T | null {
-    const entry = readEntry(key);
+    const rawKey = prefixedKey(key);
+    const raw = getBackend().getItem(rawKey);
+    if (raw === null && options?.legacy) {
+      return importLegacy(key, options);
+    }
+    const entry = decodeEntry(raw, serializer);
     if (entry === null) {
       return null;
     }
@@ -67,6 +72,31 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     }
 
     return validateEntry<T>(entry, options?.schema);
+  }
+
+  function importLegacy<T>(key: StorageKey, options: GetOptions<T>): T | null {
+    const legacy = options.legacy!;
+    const raw = getBackend().getItem(legacy.key);
+    if (raw === null) return null;
+    let value: unknown;
+    try {
+      value = legacy.deserialize(raw);
+    } catch {
+      return null;
+    }
+    if (isPromiseLike(value)) {
+      void Promise.resolve(value).catch(() => {});
+      throw new TypeError('Legacy deserialization must be synchronous.');
+    }
+    const result = validateValue(value, options.schema);
+    if (result === null) return null;
+
+    // Deliver notifications after cleanup so subscriber reads see the completed migration.
+    batchNotifications(() => {
+      setItem(key, result.value);
+      removeStoredItem(legacy.key, 'remove');
+    });
+    return result.value;
   }
 
   function resolveExpiry(options?: StorageOptions): number | null {

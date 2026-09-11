@@ -44,17 +44,25 @@ export function validateEntry<T>(
   schema?: StandardSchemaV1<unknown, T>,
 ): T | null {
   if (entry === null) return null;
-  if (!schema) return entry.value as T;
-  const result = schema['~standard'].validate(entry.value);
+  const result = validateValue(entry.value, schema);
+  return result === null ? null : result.value;
+}
+
+export function validateValue<T>(
+  value: unknown,
+  schema?: StandardSchemaV1<unknown, T>,
+): { value: T } | null {
+  if (!schema) return { value: value as T };
+  const result = schema['~standard'].validate(value);
   if (isPromiseLike(result)) {
     // Validation has already started; consume any rejection before rejecting async schemas.
     void Promise.resolve(result).catch(() => {});
     throw new TypeError('Schema validation must be synchronous. Async schemas are not supported.');
   }
-  return result.issues === undefined ? result.value : null;
+  return result.issues === undefined ? { value: result.value } : null;
 }
 
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+export function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return (
     value !== null &&
     (typeof value === 'object' || typeof value === 'function') &&

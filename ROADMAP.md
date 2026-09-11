@@ -4,17 +4,6 @@ Planned additions to ultrastorage. These are feature directions, not finalized A
 names or release commitments. Current behavior is documented in [the API reference](docs/reference/storage.md),
 with design explanations in [how it works](docs/resources/how-it-works.md).
 
-## Onboard existing values by legacy key
-
-- [ ] Import an existing value not written by ultrastorage by specifying its legacy key name.
-
-Useful when adopting ultrastorage in an application that already saves values directly through
-`localStorage`, such as importing `localStorage.getItem('theme')` into a namespaced ultrastorage
-entry. Define how the legacy key is resolved, how plain strings and JSON are decoded and validated,
-and when importing is attempted. Specify precedence when the destination already exists and
-whether the legacy entry is retained or removed after a successful write. Failed imports must
-preserve the legacy value.
-
 ## Expiration controls
 
 - [ ] Inspect an entry's expiration time and remaining TTL.

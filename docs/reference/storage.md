@@ -106,7 +106,7 @@ appStorage.getItem<T = unknown>(key: StorageKey): T | null;
 
 appStorage.getItem<T>(
   key: StorageKey,
-  options: { schema: StandardSchema },
+  options: { schema?: StandardSchema; legacy?: LegacyOptions },
 ): T | null;
 ```
 
@@ -118,9 +118,10 @@ Backend access failures, failed expiration cleanup, and thrown schema errors pro
 
 Options:
 
-| Option   | Type             | Description                                                     |
-| -------- | ---------------- | --------------------------------------------------------------- |
-| `schema` | `StandardSchema` | Validate the value during read. Async schemas are not supported |
+| Option   | Type             | Description                                                                                                                                |
+| -------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `schema` | `StandardSchema` | Validate the value during read. Async schemas are not supported                                                                            |
+| `legacy` | `LegacyOptions`  | Import a legacy key when the destination is physically missing; see [importing existing values](/guides/caveats#importing-existing-values) |
 
 Use a schema to validate the persisted value and infer its type:
 
@@ -131,6 +132,12 @@ const ThemeSchema = z.enum(['light', 'dark']);
 const theme = appStorage.getItem('theme', { schema: ThemeSchema });
 // 'light' | 'dark' | null
 ```
+
+With `legacy: { key, deserialize }`, a missing destination triggers a one-time import from
+an exact key in the same backend. The synchronous decoder receives the raw string. A successful
+import stores the schema output (or decoded value) without expiration, removes the source,
+and notifies subscribers. This opted-in read can write and throw on write or cleanup failures.
+See [importing existing values](/guides/caveats#importing-existing-values) for examples and failure behavior.
 
 ### `setItem()`
 

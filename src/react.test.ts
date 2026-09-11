@@ -35,6 +35,22 @@ afterEach(() => {
 });
 
 describe('React storage hooks', () => {
+  it('updates mounted consumers when an explicit read imports a legacy value', () => {
+    const backend = createMemoryStorage();
+    backend.setItem('theme', 'dark');
+    const storage = createStorage({ storage: backend, prefix: 'app' });
+    const hook = renderHook(() => useStorage<string>(storage, 'theme'));
+    expect(hook.result.current[0]).toBeNull();
+    expect(backend.getItem('theme')).toBe('dark');
+    act(() => {
+      storage.getItem('theme', {
+        legacy: { key: 'theme', deserialize: (raw) => raw },
+      });
+    });
+    expect(hook.result.current[0]).toBe('dark');
+    expect(backend.getItem('theme')).toBeNull();
+  });
+
   it('binds hooks, shares updates across consumers, and keeps defaults display-only', () => {
     const backend = createMemoryStorage();
     const storage = createStorage({ storage: backend });
