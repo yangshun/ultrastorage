@@ -164,12 +164,12 @@ describe('subscriptions', () => {
     expect(listener).toHaveBeenCalledTimes(2);
   });
 
-  it('does not add notification reads to unobserved writes', () => {
+  it('does not add notification reads to unobserved writes with explicit expiration', () => {
     const get = vi.spyOn(backend, 'getItem');
-    storage.setItem('value', 1);
+    storage.setItem('value', 1, { expiresAt: null });
     storage.removeItem('value');
     watch('unrelated');
-    storage.setItem('value', 2);
+    storage.setItem('value', 2, { expiresAt: null });
     storage.removeItem('value');
     expect(get).not.toHaveBeenCalled();
   });

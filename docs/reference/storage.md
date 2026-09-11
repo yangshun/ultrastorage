@@ -153,12 +153,15 @@ appStorage.setItem<T = unknown>(
 
 Options:
 
-| Option      | Type             | Description                         |
-| ----------- | ---------------- | ----------------------------------- |
-| `ttl`       | `number`         | Finite time-to-live in milliseconds |
-| `expiresAt` | `Date \| number` | Finite absolute expiration time     |
+| Option      | Type                     | Description                                |
+| ----------- | ------------------------ | ------------------------------------------ |
+| `ttl`       | `number`                 | Finite time-to-live in milliseconds        |
+| `expiresAt` | `Date \| number \| null` | Absolute deadline; null removes expiration |
 
-`ttl` and `expiresAt` cannot be used together.
+`ttl` and `expiresAt` cannot be used together, including `expiresAt: null`.
+Omitting expiration options preserves the current unexpired deadline. Missing, expired,
+unreadable, and non-expiring entries are written without expiration. Pass `expiresAt: null`
+to explicitly remove expiration.
 
 Store rich values and optionally expire them:
 
@@ -172,6 +175,53 @@ appStorage.setItem(
   { ttl: 86_400_000 },
 );
 ```
+
+### `getExpiration()`
+
+Inspect an entry's expiration without reading its value or performing cleanup.
+
+```ts
+appStorage.getExpiration(key: StorageKey): StorageExpiration | null;
+
+interface StorageExpiration {
+  expiresAt: number | null;
+}
+```
+
+Returns the stored deadline as a Unix timestamp in milliseconds, or `{ expiresAt: null }`
+for a non-expiring entry. Missing and unreadable entries return `null`. A stored `null` value
+still has inspectable expiration.
+
+Expired entries retain their inspectable deadline until they are physically removed, such as
+by `getItem()` or `clearExpired()`. Inspection does not remove data or notify subscribers.
+The result is a fresh snapshot. Backend read errors propagate.
+
+A deadline has passed when `Date.now() > expiresAt`; subtract `Date.now()` from the timestamp
+to calculate remaining lifetime, which is negative after expiration.
+
+### `setExpiration()`
+
+Change an existing entry's expiration while preserving its value.
+
+```ts
+appStorage.setExpiration(key: StorageKey, options: ExpirationOptions | null): boolean;
+
+type ExpirationOptions =
+  | { ttl: number; expiresAt?: never }
+  | { expiresAt: Date | number; ttl?: never };
+```
+
+`ttl` sets a lifetime from now; `expiresAt` sets an absolute deadline. Pass `null` to remove
+expiration. Returns `true` when applied to an existing, unexpired entry, including an unchanged
+deadline. Returns `false` for missing, expired, or unreadable entries without cleanup.
+
+Options must specify exactly one finite expiration, or be `null`; invalid options throw
+`TypeError`, even for missing entries. Backend and serialization failures propagate.
+An unchanged deadline skips the write; changed serialized content emits `set`. Past deadlines
+remain lazy: the next `getItem()` removes the expired entry and emits `expire`.
+The operation rewrites the serialized envelope and is not atomic across tabs.
+
+See [expiration controls](/guides/expiration#change-expiration) for examples.
 
 ### `removeItem()`
 
@@ -250,12 +300,15 @@ appStorage.getOrInit<T>(
 
 Options:
 
-| Option      | Type             | Description                         |
-| ----------- | ---------------- | ----------------------------------- |
-| `ttl`       | `number`         | Finite time-to-live in milliseconds |
-| `expiresAt` | `Date \| number` | Finite absolute expiration time     |
+| Option      | Type                     | Description                                |
+| ----------- | ------------------------ | ------------------------------------------ |
+| `ttl`       | `number`                 | Finite time-to-live in milliseconds        |
+| `expiresAt` | `Date \| number \| null` | Absolute deadline; null removes expiration |
 
-`ttl` and `expiresAt` cannot be used together.
+`ttl` and `expiresAt` cannot be used together, including `expiresAt: null`.
+Omitting expiration options preserves the current unexpired deadline. Missing, expired,
+unreadable, and non-expiring entries are written without expiration. Pass `expiresAt: null`
+to explicitly remove expiration.
 
 Initialize a value when an ordinary read returns `null`:
 
@@ -293,20 +346,23 @@ appStorage.updateItem<T = unknown>(
 
 Options:
 
-| Option      | Type             | Description                         |
-| ----------- | ---------------- | ----------------------------------- |
-| `ttl`       | `number`         | Finite time-to-live in milliseconds |
-| `expiresAt` | `Date \| number` | Finite absolute expiration time     |
+| Option      | Type                     | Description                                |
+| ----------- | ------------------------ | ------------------------------------------ |
+| `ttl`       | `number`                 | Finite time-to-live in milliseconds        |
+| `expiresAt` | `Date \| number \| null` | Absolute deadline; null removes expiration |
 
-`ttl` and `expiresAt` cannot be used together.
+`ttl` and `expiresAt` cannot be used together, including `expiresAt: null`.
+Omitting expiration options preserves the current unexpired deadline. Missing, expired,
+unreadable, and non-expiring entries are written without expiration. Pass `expiresAt: null`
+to explicitly remove expiration.
 
 ```ts app.ts
 const count = appStorage.updateItem<number>('cart-count', (current) => (current ?? 0) + 1);
 // 1 when the key was previously missing
 ```
 
-Omitting expiration options removes the previous TTL; passing a TTL starts a new lifetime from
-this write. The updater must be synchronous and receives the value without schema validation.
+Omitting expiration options preserves the current unexpired deadline; passing a TTL starts a new
+lifetime from this write. Pass `expiresAt: null` to remove expiration. The updater must be synchronous and receives the value without schema validation.
 Updates are not atomic across tabs or concurrent callers; see [synchronous helpers](/guides/values#update-a-value).
 
 ### `subscribe()`

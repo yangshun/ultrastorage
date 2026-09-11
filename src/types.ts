@@ -2,7 +2,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 export interface StorageOptions {
   /**
-   * Time-to-live in milliseconds. If not set, the item never expires.
+   * Time-to-live in milliseconds. Omitted options preserve an existing unexpired deadline.
    * Cannot be used together with `expiresAt`.
    * Must resolve to a finite expiration timestamp.
    */
@@ -11,10 +11,20 @@ export interface StorageOptions {
   /**
    * Absolute expiration time as a `Date` or Unix timestamp in milliseconds.
    * Cannot be used together with `ttl`.
-   * Must be a finite timestamp or valid `Date`.
+   * Must be a finite timestamp or valid `Date`. Pass null to remove expiration.
    */
-  expiresAt?: Date | number;
+  expiresAt?: Date | number | null;
 }
+
+/** A stored expiration deadline as a Unix timestamp in milliseconds. Null means no expiration. */
+export interface StorageExpiration {
+  expiresAt: number | null;
+}
+
+/** Set a lifetime from now or an absolute deadline. Pass null to setExpiration to remove it. */
+export type ExpirationOptions =
+  | { ttl: number; expiresAt?: never }
+  | { expiresAt: Date | number; ttl?: never };
 
 export interface LegacyOptions {
   /** Exact key in the same backend, without the instance prefix. */
@@ -53,6 +63,15 @@ export interface StorageChange {
 export type StorageListener = (change: StorageChange) => void;
 
 interface UltraStorageExtensions {
+  /** Inspect expiration without cleanup, including past deadlines. Missing and unreadable entries return null. */
+  getExpiration(key: StorageKey): StorageExpiration | null;
+
+  /**
+   * Change expiration without changing the value. Returns false for missing, expired,
+   * or unreadable entries without cleanup. Changed bytes emit a set event.
+   */
+  setExpiration(key: StorageKey, options: ExpirationOptions | null): boolean;
+
   /**
    * Listens for changes to a key, without immediately invoking the listener.
    * Local notifications are synchronous; external browser events arrive asynchronously.
@@ -83,7 +102,8 @@ interface UltraStorageExtensions {
    *
    * @param key - The storage key.
    * @param value - The value to store. Supports rich types like `Set`, `Map`, `Date`, etc.
-   * @param options - Optional. Set `ttl` (milliseconds) or `expiresAt` (Date or timestamp).
+   * @param options - Set `ttl` or `expiresAt`; `expiresAt: null` removes expiration.
+   * Without options, writes preserve the current unexpired deadline.
    */
   setItem<T = unknown>(key: StorageKey, value: T, options?: StorageOptions): void;
 

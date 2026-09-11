@@ -35,6 +35,25 @@ afterEach(() => {
 });
 
 describe('React storage hooks', () => {
+  it('preserves expiration through setters and observes metadata changes', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    const storage = createStorage({ storage: createMemoryStorage() });
+    storage.setItem('count', 1, { ttl: 100 });
+    const hook = renderHook(() => useStorage<number>(storage, 'count'));
+    vi.setSystemTime(10_020);
+    act(() => hook.result.current[1]((value) => (value ?? 0) + 1));
+    expect(hook.result.current[0]).toBe(2);
+    expect(storage.getExpiration('count')).toEqual({ expiresAt: 10_100 });
+    act(() => hook.result.current[1](3, { expiresAt: null }));
+    expect(storage.getExpiration('count')).toEqual({ expiresAt: null });
+    expect(hook.result.current[0]).toBe(3);
+    act(() => {
+      storage.setExpiration('count', { expiresAt: 10_019 });
+    });
+    expect(hook.result.current[0]).toBeNull();
+  });
+
   it('updates mounted consumers when an explicit read imports a legacy value', () => {
     const backend = createMemoryStorage();
     backend.setItem('theme', 'dark');

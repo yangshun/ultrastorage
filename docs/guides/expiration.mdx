@@ -42,8 +42,84 @@ Passing an expiration timestamp does not schedule a timer or notify subscribers.
 also accepts a valid Date.
 
 An entry expires when the current time is strictly greater than its expiry timestamp. A new write
-without expiration options removes any previous expiration, including writes through `updateItem()`
+without expiration options preserves the current unexpired deadline, including writes through `updateItem()`
 or a React setter. `getOrInit()` leaves expiration unchanged when it returns an existing value;
 see [initialization](/guides/values#initialize-a-value) and [updates](/guides/values#update-a-value).
 
 For React rendering, see [snapshots and expiration](/guides/react#snapshots-and-expiration).
+
+## Inspect expiration
+
+Inspect the stored deadline without reading the value:
+
+```ts app.ts
+const expiration = appStorage.getExpiration('draft');
+// { expiresAt: 1790000000000 } for an entry with a deadline, even if it has passed
+// { expiresAt: null } for an entry that never expires
+// null for a missing or unreadable entry
+```
+
+`expiresAt` is a Unix timestamp in milliseconds. Unlike `getItem()` and `has()`, inspection
+includes expired entries that are still physically stored. Once `getItem()` or `clearExpired()`
+removes an expired entry, its expiration metadata is no longer available.
+
+Inspection does not delete entries or notify subscribers. To check whether the deadline has
+passed, use `Date.now() > expiration.expiresAt` after checking both the result and its deadline
+for `null`. Remaining lifetime can be calculated as `expiration.expiresAt - Date.now()`;
+a negative result means the deadline has passed.
+
+## Change expiration
+
+Reset a draft's lifetime without supplying its value:
+
+```ts app.ts
+appStorage.setExpiration('draft', { ttl: 7 * 24 * 60 * 60_000 });
+appStorage.setExpiration('draft', { expiresAt: new Date('2030-01-01') });
+appStorage.setExpiration('draft', null); // Keep the value indefinitely
+```
+
+`ttl` starts from now; it does not add time to the old deadline. The method returns `true` for
+an existing, unexpired entry, including when the deadline is already the requested value.
+Missing, expired, and unreadable entries return `false` without cleanup. Expired values are
+never revived. Stored `null` counts as an existing entry.
+
+Pass exactly one of `ttl` or `expiresAt`, or pass `null` to remove expiration. Invalid options
+throw a `TypeError`. Backend and serialization errors propagate. The value is preserved, but
+the backend still rewrites the serialized entry; changes are not atomic across tabs.
+
+Changed stored content emits a `set` event, including across instances on the same page.
+An unchanged deadline does not write or notify. Setting a deadline in the past makes the
+entry expired immediately on its next read; cleanup emits `expire` as usual. No timer is scheduled.
+
+## Preserve expiration when writing
+
+Writes preserve the current unexpired entry's deadline by default:
+
+```ts app.ts
+appStorage.setItem('draft', { title: 'First draft' }, { ttl: 60_000 });
+appStorage.setItem('draft', { title: 'Revised draft' }); // Keeps the original deadline
+appStorage.updateItem<number>('count', (count) => (count ?? 0) + 1);
+```
+
+The lifetime does not restart on updates. Missing, expired, unreadable, and non-expiring entries
+produce a value without expiration. The deadline is inspected at write time; updates remain
+non-atomic across tabs.
+
+Pass `ttl` or `expiresAt` to replace the deadline, or `expiresAt: null` to remove it:
+
+```ts app.ts
+appStorage.setItem('draft', { title: 'Keep this draft' }, { expiresAt: null });
+```
+
+React setters follow the same defaults and accept the same options:
+
+```tsx
+setDraft(nextDraft); // Keeps the current unexpired deadline
+setDraft(nextDraft, { expiresAt: null }); // Removes expiration
+```
+
+`getOrInit()` uses these rules when writing its factory result. An existing non-null value is
+returned without changing expiration regardless of write options.
+
+This changes the previous write default, which removed expiration. To retain that behavior,
+pass `{ expiresAt: null }` explicitly. The `preserveExpiration` option has been removed.

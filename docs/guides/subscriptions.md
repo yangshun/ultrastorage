@@ -90,7 +90,7 @@ Equivalent array values share a subscription even when they are different array 
 
 | Trigger                                         | Event                                   |
 | ----------------------------------------------- | --------------------------------------- |
-| `setItem()`, including writes through helpers   | `set`, `local`                          |
+| `setItem()`, helper writes, `setExpiration()`   | `set`, `local`                          |
 | `removeItem()`                                  | `remove`, `local`                       |
 | `clear()`                                       | `remove` per affected key, `local`      |
 | Cleanup through `getItem()` or `clearExpired()` | `expire`, `local`                       |
@@ -99,6 +99,10 @@ Equivalent array values share a subscription even when they are different array 
 
 Identical serialized writes (including expiry metadata), missing-key removals, and failed mutations
 do not notify listeners. Changing only expiry metadata still counts as a write.
+
+Expiration changes through `setExpiration()` emit `set` when stored content changes.
+An unchanged deadline does not notify. Inspection through `getExpiration()` does not notify
+or remove expired data. See [expiration controls](/guides/expiration#change-expiration).
 
 External deletions are always `remove`, since the browser cannot identify expiration cleanup or a
 namespace clear as their cause. Matching external writes can notify even when `getItem()` returns

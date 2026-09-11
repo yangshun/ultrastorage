@@ -4,16 +4,6 @@ Planned additions to ultrastorage. These are feature directions, not finalized A
 names or release commitments. Current behavior is documented in [the API reference](docs/reference/storage.md),
 with design explanations in [how it works](docs/resources/how-it-works.md).
 
-## Expiration controls
-
-- [ ] Inspect an entry's expiration time and remaining TTL.
-- [ ] Change or extend expiration without requiring callers to read and rewrite the value.
-- [ ] Explicitly preserve the existing expiration when updating a value.
-
-Useful for extending a draft's lifetime or updating cached data without accidentally
-removing its TTL. Define results for missing, expired, and non-expiring entries, and
-how metadata changes notify subscribers. Keep existing write defaults compatible.
-
 ## Namespace subscriptions
 
 - [ ] Observe changes to any key within a storage instance's namespace, including newly added keys.

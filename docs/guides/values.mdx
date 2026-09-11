@@ -99,17 +99,20 @@ Read, modify, and write a value in one call.
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 ```
 
-Every update is a new write. Omitting expiration options removes any previous TTL; passing a TTL
+Every update is a new write. Omitting expiration options preserves the current unexpired deadline; passing a TTL
 starts a new lifetime from the update:
 
 ```ts app.ts
 appStorage.setItem('count', 1, { ttl: 60_000 });
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
-// 'count' now has no expiration.
+// 'count' keeps its original expiration deadline.
 
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1, { ttl: 60_000 });
 // 'count' now expires 60 seconds after this update.
 ```
+
+To remove expiration during an update, pass `{ expiresAt: null }`.
+See [preserving expiration](/guides/expiration#preserve-expiration-when-writing).
 
 :::warning[Helpers are synchronous and non-atomic]
 Factories and updaters must return synchronously: promises are passed directly to the serializer

@@ -108,7 +108,7 @@ Avoid invoking importing reads during React rendering.
 - **Ordinary read validation does not rewrite storage**: Synchronous schemas leave invalid entries untouched and return transformations without saving them, while [React setters must write values the schema accepts](/guides/react#schemas-and-types).
 - **Helpers are synchronous and non-atomic**: Factories and updaters are not awaited, and read-modify-write operations can race across tabs or callers ([helper semantics](/guides/values#update-a-value)).
 - **Initialization can run again**: Stored `null` causes `getOrInit()` to call its factory again, and returning an existing value does not refresh its TTL ([initialization](/guides/values#initialize-a-value)).
-- **Updates replace expiration**: An `updateItem()` call without expiration options removes the previous TTL ([updating values](/guides/values#update-a-value)).
+- **Updates preserve expiration**: An `updateItem()` call without expiration options keeps the current unexpired deadline. Pass `{ expiresAt: null }` to remove it ([updating values](/guides/values#update-a-value)).
 - **Expiration has no timer**: Elapsed time alone triggers neither cleanup nor notifications, and expired entries can occupy storage until [lazy cleanup](/guides/expiration#cleanup-and-notifications).
 - **Same-page notifications require the same runtime**: Direct backend writes do not notify locally, and separately loaded package copies or mixed ESM/CJS runtimes do not share a registry ([subscriptions](/guides/subscriptions)).
 - **Use the React adapter for rendering**: Ordinary reads return fresh objects and can delete expired entries, while the adapter supplies [cached, side-effect-free snapshots](/guides/react#snapshots-and-expiration).

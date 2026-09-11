@@ -149,7 +149,8 @@ export function DailyCounter({ storage }: { storage: UltraStorage }) {
 increment sets expiry to the next local midnight.
 
 Expiration is lazy here too; the counter does not automatically rerender at midnight. Use either
-`ttl` or `expiresAt` on a write, never both; omitting both writes a non-expiring entry.
+`ttl` or `expiresAt` on a write, never both. Omitting expiration options preserves the current
+unexpired deadline; `expiresAt: null` removes expiration.
 
 ### Read options
 
@@ -168,8 +169,9 @@ uses that same output type, and writes are not schema-validated.
 ### Return value
 
 `useStorage()` and the bound hook return a readonly `[value, setValue, removeValue]` tuple.
-`setValue(valueOrUpdater, storageOptions?)` accepts the existing `ttl` or `expiresAt` options;
-omitted expiration options write a non-expiring entry.
+`setValue(valueOrUpdater, storageOptions?)` accepts `ttl` or `expiresAt`, never both.
+Omitted expiration options preserve the current unexpired deadline. Pass `expiresAt: null`
+to remove expiration. Missing or expired entries are written without expiration by default.
 
 Functional updates read the latest persisted value, apply schema validation and the fallback, then
 write the result. They are synchronous but are not atomic across tabs. `removeValue()` removes the

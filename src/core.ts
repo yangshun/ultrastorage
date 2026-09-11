@@ -5,9 +5,11 @@ import { registerSnapshotAccess } from './snapshots';
 import { batchNotifications, hasSubscribers, notify, subscribe } from './subscriptions';
 import type {
   CoreStorageOptions,
+  ExpirationOptions,
   GetOptions,
   UltraStorage,
   StorageChange,
+  StorageExpiration,
   StorageKey,
   StorageListener,
   StorageOptions,
@@ -93,14 +95,14 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
 
     // Deliver notifications after cleanup so subscriber reads see the completed migration.
     batchNotifications(() => {
-      setItem(key, result.value);
+      setItem(key, result.value, { expiresAt: null });
       removeStoredItem(legacy.key, 'remove');
     });
     return result.value;
   }
 
   function resolveExpiry(options?: StorageOptions): number | null {
-    if (options?.ttl != null && options?.expiresAt != null) {
+    if (options?.ttl != null && options?.expiresAt !== undefined) {
       throw new TypeError('Cannot specify both "ttl" and "expiresAt". Use one or the other.');
     }
 
@@ -125,7 +127,14 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   function setItem<T = unknown>(key: StorageKey, value: T, options?: StorageOptions): void {
-    const expiry = resolveExpiry(options);
+    const resolvedExpiry = resolveExpiry(options);
+    const preserveExpiration = options?.ttl == null && options?.expiresAt === undefined;
+    const previousExpiry = preserveExpiration ? getExpiration(key)?.expiresAt : null;
+    const expiry = preserveExpiration
+      ? previousExpiry != null && Date.now() <= previousExpiry
+        ? previousExpiry
+        : null
+      : resolvedExpiry;
     const serializedKey = serializeStorageKey(key);
 
     if (!isProduction) {
@@ -151,6 +160,10 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
       expiry,
     };
     const rawKey = prefix + serializedKey;
+    writeEntry(rawKey, entry);
+  }
+
+  function writeEntry(rawKey: string, entry: StorageEntryEnvelope): void {
     const raw = serializer.stringify(entry);
     const observed = hasSubscribers(getBackend(), rawKey);
     const previous = observed ? getBackend().getItem(rawKey) : null;
@@ -158,6 +171,22 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     if (observed && previous !== raw) {
       notify(getBackend(), rawKey, 'set');
     }
+  }
+
+  function getExpiration(key: StorageKey): StorageExpiration | null {
+    const entry = readEntry(key);
+    return entry === null ? null : { expiresAt: entry.expiry };
+  }
+
+  function setExpiration(key: StorageKey, options: ExpirationOptions | null): boolean {
+    if (options !== null && options.ttl == null && options.expiresAt == null) {
+      throw new TypeError('Specify "ttl", "expiresAt", or null to remove expiration.');
+    }
+    const expiry = resolveExpiry(options ?? undefined);
+    const entry = readEntry(key);
+    if (entry === null || (entry.expiry !== null && Date.now() > entry.expiry)) return false;
+    if (entry.expiry !== expiry) writeEntry(prefixedKey(key), { ...entry, expiry });
+    return true;
   }
 
   function getOrInit<T>(key: StorageKey, factory: () => T, options?: StorageOptions): T {
@@ -302,6 +331,8 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
       return count;
     },
     getItem,
+    getExpiration,
+    setExpiration,
     setItem,
     getOrInit,
     updateItem,

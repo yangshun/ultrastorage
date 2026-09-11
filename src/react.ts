@@ -31,7 +31,7 @@ export interface UseStorageOptions<T> {
 
 /**
  * Write a replacement value or update the latest persisted value after schema
- * validation and fallback. Omitted options write without expiration. Errors
+ * validation and fallback. Omitted options preserve the current unexpired deadline. Errors
  * propagate, and read-modify-write updates are not atomic across tabs.
  */
 export type StorageSetter<T, Current = T | null> = (
