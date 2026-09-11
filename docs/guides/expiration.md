@@ -12,7 +12,7 @@ when read.
 ```ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'my-app' });
+const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 **Note**: Expired data behaves like a missing key. `getItem()` removes expired entries on read, while `has()`, `key()`, and `length` simply ignore them. Use `clearExpired()` to proactively sweep them.

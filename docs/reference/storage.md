@@ -29,7 +29,7 @@ Create and reuse a namespaced instance for application state:
 ```ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'my-app' });
+const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 ## Storage instance

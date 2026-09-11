@@ -26,8 +26,8 @@ import { createStorage } from 'ultrastorage';
 // Create an app-wide singleton instance.
 export const appStorage = createStorage({
   // Optional, but highly recommended. The `theme` key will be stored as
-  // `my-app:theme`, reducing the likelihood of collisions with third-party code.
-  prefix: 'my-app',
+  // `acme:theme`, reducing the likelihood of collisions with third-party code.
+  prefix: 'acme',
 });
 ```
 

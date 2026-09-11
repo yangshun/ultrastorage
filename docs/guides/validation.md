@@ -13,7 +13,7 @@ before using it.
 ```ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'my-app' });
+const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 Validate with any libraries that support [Standard Schema](https://github.com/standard-schema/standard-schema), as long as validation is synchronous.

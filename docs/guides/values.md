@@ -12,7 +12,7 @@ with helpers for initializing and updating stored data.
 ```ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'my-app' });
+const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 ## Rich values

@@ -14,9 +14,9 @@ import { createStorage } from 'ultrastorage';
 ```
 
 ```ts
-const appStorage = createStorage({ prefix: 'my-app' });
+const appStorage = createStorage({ prefix: 'acme' });
 
-appStorage.setItem('theme', 'dark'); // stored as "my-app:theme"
+appStorage.setItem('theme', 'dark'); // stored as "acme:theme"
 appStorage.getItem('theme'); // 'dark'
 
 localStorage.getItem('theme'); // null
@@ -28,8 +28,8 @@ appStorage.clear();
 ## Custom separators
 
 ```ts
-const appStorage = createStorage({ prefix: 'my-app', separator: '/' });
-appStorage.setItem('theme', 'dark'); // stored key: my-app/theme
+const appStorage = createStorage({ prefix: 'acme', separator: '/' });
+appStorage.setItem('theme', 'dark'); // stored key: acme/theme
 ```
 
 The separator is only placed between the namespace prefix and the key.

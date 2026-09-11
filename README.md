@@ -39,7 +39,7 @@ Store and retrieve objects without the `JSON.stringify` dance. You're welcome.
 import { createStorage } from 'ultrastorage';
 
 // Create an app-wide singleton instance.
-export const appStorage = createStorage({ prefix: 'my-app' });
+export const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 ```ts
@@ -102,9 +102,9 @@ appStorage.getItem('token'); // null (after 60s)
 Because your keys deserve their own personal space, away from whatever chaos other libraries left behind.
 
 ```ts
-const appStorage = createStorage({ prefix: 'my-app' });
+const appStorage = createStorage({ prefix: 'acme' });
 
-appStorage.setItem('theme', 'dark'); // stored as "my-app:theme"
+appStorage.setItem('theme', 'dark'); // stored as "acme:theme"
 appStorage.getItem('theme'); // 'dark'
 
 localStorage.getItem('theme'); // null
@@ -209,7 +209,7 @@ Pass `localStorage`, `sessionStorage`, or any object that implements `Storage`. 
 import { createStorage, createMemoryStorage } from 'ultrastorage';
 
 const appStorage = createStorage({
-  prefix: 'my-app',
+  prefix: 'acme',
   storage: typeof window === 'undefined' ? createMemoryStorage() : undefined,
 });
 ```
@@ -222,7 +222,7 @@ Don't like devalue? Bring your own `stringify`/`parse` and we won't judge. Much.
 import superjson from 'superjson';
 
 const appStorage = createStorage({
-  prefix: 'my-app',
+  prefix: 'acme',
   serializer: { stringify: superjson.stringify, parse: superjson.parse },
 });
 ```
@@ -234,7 +234,7 @@ import { createStorage } from 'ultrastorage/core';
 import superjson from 'superjson';
 
 const appStorage = createStorage({
-  prefix: 'my-app',
+  prefix: 'acme',
   serializer: { stringify: superjson.stringify, parse: superjson.parse },
 });
 ```

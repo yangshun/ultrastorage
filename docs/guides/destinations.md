@@ -18,7 +18,7 @@ Pass `localStorage`, `sessionStorage`, or any object that implements `Storage` t
 import { createStorage, createMemoryStorage } from 'ultrastorage';
 
 const appStorage = createStorage({
-  prefix: 'my-app',
+  prefix: 'acme',
   storage: typeof window === 'undefined' ? createMemoryStorage() : undefined,
 });
 ```
@@ -30,7 +30,7 @@ usage.
 
 ```ts
 const memory = createMemoryStorage();
-const appStorage = createStorage({ prefix: 'my-app', storage: memory });
+const appStorage = createStorage({ prefix: 'acme', storage: memory });
 ```
 
 Use a separate in-memory object for each server request when saving request-specific data. Separate
@@ -45,7 +45,7 @@ Don't like devalue? Bring your own `stringify`/`parse` and we won't judge. Much.
 import superjson from 'superjson';
 
 const appStorage = createStorage({
-  prefix: 'my-app',
+  prefix: 'acme',
   serializer: { stringify: superjson.stringify, parse: superjson.parse },
 });
 ```
@@ -58,7 +58,7 @@ import { createStorage } from 'ultrastorage/core';
 import superjson from 'superjson';
 
 const appStorage = createStorage({
-  prefix: 'my-app',
+  prefix: 'acme',
   serializer: { stringify: superjson.stringify, parse: superjson.parse },
 });
 ```
