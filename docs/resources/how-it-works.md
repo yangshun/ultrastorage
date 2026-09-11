@@ -66,3 +66,25 @@ validation fails, you get `null`.
 
 If the schema is async, `ultrastorage` rejects it immediately rather than hiding asynchronous
 behavior behind a synchronous storage API.
+
+## How subscriptions and React share storage
+
+Subscriptions use a shared registry keyed by backend object and fully prefixed key. This lets
+instances observe each other's writes without requiring the writer to subscribe. The registry is
+framework-independent; the React adapter uses it through `useSyncExternalStore`. See
+[subscriptions](/guides/subscriptions) for delivery order and browser event behavior.
+
+React cannot use ordinary `getItem()` calls as snapshots: those reads return fresh objects and can
+delete expired entries. A private WeakMap connects factory-created instances to side-effect-free
+snapshot readers instead. Each reader caches decoded entries by their raw stored representation,
+rechecks expiration on every read, and lives with its consumer rather than in a global key cache.
+
+Schema validation and display defaults are applied outside the underlying snapshot identity. This
+allows inline options without continually replacing the storage snapshot. Setter callbacks use
+the latest committed options so an abandoned React render cannot change how an update behaves.
+See [React snapshots and expiration](/guides/react#snapshots-and-expiration) for consumer guidance.
+
+The registry and snapshot bridge are shared across the main, core, and React entry points within
+each module format. Separate package copies and mixed ESM/CJS runtimes do not share this state.
+React remains an optional dependency, and the main and core entry points do not import React or
+its types.

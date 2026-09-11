@@ -277,6 +277,9 @@ See the [documentation](docs/index.md) for the full API reference, React integra
 
 ## Development
 
+See the [roadmap](ROADMAP.md) for planned features, the [API reference](docs/reference/storage.md)
+for current behavior, and [how it works](docs/resources/how-it-works.md) for design explanations.
+
 This project uses [Vite+](https://viteplus.dev/guide/) with the Node.js version in
 `.node-version` and the package manager declared in `package.json`.
 
