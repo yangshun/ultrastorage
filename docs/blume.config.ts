@@ -47,7 +47,7 @@ export default defineConfig({
       },
       {
         label: 'Resources',
-        items: ['/resources/how-it-works', '/resources/alternatives'],
+        items: ['/resources/changelog', '/resources/how-it-works', '/resources/alternatives'],
       },
     ],
   },

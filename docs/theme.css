@@ -16,6 +16,13 @@ header img[alt='ultrastorage'] {
   font-size: 2.5rem;
 }
 
+/* Blume adds a page title before the symlinked root CHANGELOG.md's own h1.
+   Hide only that adjacent duplicate so the root changelog stays unchanged.
+   Remove this workaround if Blume stops rendering the extra title. */
+.prose > h1:first-child + h1#changelog {
+  display: none;
+}
+
 .prose h2 {
   font-size: 1.625rem;
 }
