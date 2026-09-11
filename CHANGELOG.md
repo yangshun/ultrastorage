@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.8.0 - 2026-09-11
+
+- Added `getItem()` legacy imports with a custom deserializer and optional schema validation. Imports run only when the destination is physically missing, persist the validated value without expiration, and remove the legacy key after a successful write.
+- Added `getExpiration()` to inspect stored deadlines without cleanup and `setExpiration()` to change or remove expiration without supplying the value.
+- Changed writes without expiration options to preserve the current unexpired deadline, including `updateItem()` and React setters. Pass `{ expiresAt: null }` to remove expiration explicitly.
+- Added `getItemResult()` with distinct outcomes for successful reads, missing and expired entries, unsupported data, parse errors, and validation errors. Successful results distinguish stored `null` from a missing value.
+- Added opt-in `{ reactiveExpiration: true }` for subscriptions and React hooks. Expiration timers notify listeners and update React values without deleting entries, with rechecks on window focus and page visibility changes.
+- Expanded documentation for migration, expiration controls, detailed reads, and reactive expiration, and added a changelog page.
+
+### Upgrade notes
+
+- Previously, writing without expiration options removed an existing deadline. To retain that behavior, pass `{ expiresAt: null }` to `setItem()`, `updateItem()`, or a React setter. Pass a new `ttl` to restart the lifetime instead of preserving the original deadline.
+- Reactive expiration remains opt-in. Timer notifications may be delayed, do not remove stored entries, and can be followed by another `expire` event during lazy cleanup.
+- Legacy imports are available through `getItem()` only. `getItemResult()` does not import legacy data; backend failures, thrown schema errors, and unsupported asynchronous validation still throw.
+
 ## 0.7.0 - 2026-09-11
 
 - Added array storage keys through the exported `StorageKey` type across storage methods, subscriptions, and React hooks. Equivalent arrays address the same entry without depending on array identity.
