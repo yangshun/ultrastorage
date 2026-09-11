@@ -29,7 +29,7 @@ Create the bound hook outside components; no provider is required.
 
 Create a shared instance and export its bound hook:
 
-```ts app-storage.ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
 import { createStorageHook } from 'ultrastorage/react';
 
@@ -43,7 +43,7 @@ Components can read and update the same key without passing the instance. This e
 'use client';
 
 import { z } from 'zod';
-import { useAppStorage } from './app-storage';
+import { useAppStorage } from './lib/app-storage';
 
 const ThemeSchema = z.enum(['light', 'dark']);
 
@@ -117,7 +117,7 @@ stored. The direct hook accepts the same read options as a bound hook.
 
 Write options go on the setter; this example uses an absolute `expiresAt` instead of a `ttl`:
 
-```tsx
+```tsx daily-counter.tsx
 import type { UltraStorage } from 'ultrastorage';
 import { useStorage } from 'ultrastorage/react';
 import { z } from 'zod';

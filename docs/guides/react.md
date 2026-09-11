@@ -39,7 +39,7 @@ each render.
 
 Create a shared storage instance and bind it with `createStorageHook()` outside components. Call the returned hook with the key you want to read; no provider is required.
 
-```ts app-storage.ts
+```ts lib/app-storage.ts
 // create instances and bound hooks outside components
 import { createStorage } from 'ultrastorage';
 import { createStorageHook } from 'ultrastorage/react';
@@ -51,7 +51,7 @@ export const useAppStorage = createStorageHook(appStorage);
 ```tsx theme-picker.tsx
 // use a Client Component in an RSC framework
 'use client';
-import { useAppStorage } from './app-storage';
+import { useAppStorage } from './lib/app-storage';
 
 export function ThemePicker() {
   const [theme, setTheme, removeTheme] = useAppStorage('theme', {
@@ -71,8 +71,8 @@ Components using the same key respond to writes through the hook, ordinary ultra
 
 For a component that only displays a value, destructure the first tuple item:
 
-```tsx
-import { useAppStorage } from './app-storage';
+```tsx current-theme.tsx
+import { useAppStorage } from './lib/app-storage';
 
 export function CurrentTheme() {
   const [theme] = useAppStorage('theme', { defaultValue: 'light' });
@@ -90,8 +90,8 @@ absent, so reuse the same default when they should agree.
 
 Use the setter to replace a value or compute it from the latest persisted value. The remover resets the displayed value to its default. Continue using the shared `useAppStorage` hook:
 
-```tsx
-import { useAppStorage } from './app-storage';
+```tsx counter.tsx
+import { useAppStorage } from './lib/app-storage';
 
 function Counter() {
   const [count, setCount, removeCount] = useAppStorage<number>('count', {
@@ -113,7 +113,7 @@ See the [React API reference](/reference/react) for read options, return values,
 
 Use `useStorage()` when the caller chooses the instance. This component can work with any factory-created ultrastorage instance passed by its parent:
 
-```tsx
+```tsx theme-picker.tsx
 import type { UltraStorage } from 'ultrastorage';
 import { useStorage } from 'ultrastorage/react';
 
@@ -136,9 +136,9 @@ Call `useStorage()` directly in this case; create bound hooks outside components
 
 Use any synchronous Standard Schema implementation. For example, if your app uses Zod:
 
-```tsx
+```tsx profile.tsx
 import { z } from 'zod';
-import { useAppStorage } from './app-storage';
+import { useAppStorage } from './lib/app-storage';
 
 const UserSchema = z.object({ name: z.string(), age: z.number() });
 

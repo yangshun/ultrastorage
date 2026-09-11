@@ -37,10 +37,10 @@ recognized entries within the configured namespace.
 
 Create and reuse a namespaced instance for application state:
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'acme' });
+export const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 ## Storage instance
@@ -48,7 +48,9 @@ const appStorage = createStorage({ prefix: 'acme' });
 The examples below use the `appStorage` instance created above. Its methods follow the familiar
 `Storage` API while accepting rich JavaScript values:
 
-```ts
+```ts app.ts
+import { appStorage } from './lib/app-storage';
+
 appStorage.setItem('theme', 'dark');
 appStorage.getItem('theme'); // 'dark'
 ```
@@ -68,7 +70,7 @@ ordered string segments into an opaque canonical string without using `separator
 
 Use a string for a single identifier or an array to preserve structural segments:
 
-```ts
+```ts app.ts
 const userId = '42';
 
 appStorage.setItem('theme', 'dark');
@@ -86,7 +88,7 @@ appStorage.getItem(['users', userId]);
 Avoid authoring string keys beginning with `\u0000us:a:`, the reserved prefix used to encode array
 keys. A string that exactly matches a canonical array encoding addresses the same entry:
 
-```ts
+```ts app.ts
 appStorage.setItem(['users', '42'], 'Alice');
 appStorage.getItem('\u0000us:a:["users","42"]'); // 'Alice'
 ```
@@ -122,7 +124,7 @@ Options:
 
 Use a schema to validate the persisted value and infer its type:
 
-```ts
+```ts app.ts
 import { z } from 'zod';
 
 const ThemeSchema = z.enum(['light', 'dark']);
@@ -153,7 +155,7 @@ Options:
 
 Store rich values and optionally expire them:
 
-```ts
+```ts app.ts
 appStorage.setItem(
   'draft',
   {
@@ -172,7 +174,7 @@ Removes a single key from the current namespace.
 appStorage.removeItem(key: StorageKey): void;
 ```
 
-```ts
+```ts app.ts
 appStorage.removeItem('draft');
 appStorage.getItem('draft'); // null
 ```
@@ -191,7 +193,7 @@ This checks for a recognized, non-expired entry, including stored `null`. It doe
 validation, so it can return `true` while a [validated read](/guides/validation#read-semantics)
 returns `null`.
 
-```ts
+```ts app.ts
 if (!appStorage.has('preferences')) {
   appStorage.setItem('preferences', { theme: 'system' });
 }
@@ -217,7 +219,7 @@ Scope follows string-prefix matching: overlapping prefixes can include each othe
 instance without a prefix matches recognized entries across the backend. See
 [namespace overlap](/guides/namespaces).
 
-```ts
+```ts app.ts
 appStorage.setItem('theme', 'dark');
 localStorage.setItem('analytics-id', 'abc123');
 
@@ -250,7 +252,7 @@ Options:
 
 Initialize a value when an ordinary read returns `null`:
 
-```ts
+```ts app.ts
 const preferences = appStorage.getOrInit('preferences', () => ({
   theme: 'system',
   locale: 'en',
@@ -266,7 +268,7 @@ see [synchronous helpers](/guides/values#update-a-value).
 
 `getOrInit()` is useful for migrating from an existing `localStorage` (but non-`ultrastorage`) key. To do that, specify a `factory` function that reads from the existing `localStorage` key.
 
-```ts
+```ts app.ts
 const theme = appStorage.getOrInit('theme', () => localStorage.getItem('theme'));
 ```
 
@@ -291,7 +293,7 @@ Options:
 
 `ttl` and `expiresAt` cannot be used together.
 
-```ts
+```ts app.ts
 const count = appStorage.updateItem<number>('cart-count', (current) => (current ?? 0) + 1);
 // 1 when the key was previously missing
 ```
@@ -315,7 +317,7 @@ Returns an idempotent unsubscribe function. See the [subscription guide](/guides
 
 Read the latest value when the subscribed key changes:
 
-```ts
+```ts app.ts
 const unsubscribe = appStorage.subscribe('theme', (change) => {
   const theme = appStorage.getItem<'light' | 'dark'>('theme');
   console.log(change.type, theme);
@@ -333,7 +335,7 @@ Removes only expired entries in the current namespace.
 appStorage.clearExpired(): void;
 ```
 
-```ts
+```ts app.ts
 appStorage.setItem('search-results', ['first', 'second'], { ttl: 5 * 60_000 });
 
 // Later, such as when the application starts again:
@@ -356,7 +358,7 @@ Expired entries are excluded from the count but not removed unless read via `get
 Each access scans and decodes entries in the namespace. Use `keys()` to enumerate all keys in one
 scan instead of repeatedly reading `length` and calling `key()`.
 
-```ts
+```ts app.ts
 appStorage.setItem('theme', 'dark');
 appStorage.setItem('locale', 'en');
 
@@ -381,7 +383,7 @@ Every returned key can be passed directly to
 `getItem()`, `removeItem()`, and other key-taking methods. This return type differs from native
 `Storage.key()`, which returns only strings or `null`.
 
-```ts
+```ts app.ts
 appStorage.setItem('theme', 'dark');
 appStorage.setItem(['users', '42'], 'Alice');
 
@@ -408,7 +410,7 @@ original segments; string keys remain strings except for [reserved array encodin
 Every returned key can be passed directly to
 `getItem()`, `removeItem()`, and other key-taking methods.
 
-```ts
+```ts app.ts
 appStorage.setItem('theme', 'dark');
 appStorage.setItem(['users', '42'], 'Alice');
 
@@ -418,7 +420,7 @@ appStorage.keys(); // ['theme', ['users', '42']]
 The result is a snapshot: later writes or changes to the returned array, including nested key
 arrays, do not affect each other.
 
-```ts
+```ts app.ts
 for (const key of appStorage.keys()) {
   console.log(key);
 }
@@ -426,7 +428,7 @@ for (const key of appStorage.keys()) {
 
 You can also safely remove entries while looping over the snapshot:
 
-```ts
+```ts app.ts
 for (const key of appStorage.keys()) {
   appStorage.removeItem(key);
 }
@@ -457,7 +459,7 @@ createMemoryStorage(): Storage;
 
 Useful for tests or server-side usage.
 
-```ts
+```ts app.ts
 import { createMemoryStorage, createStorage } from 'ultrastorage';
 
 const testStorage = createStorage({

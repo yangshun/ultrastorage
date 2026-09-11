@@ -9,21 +9,15 @@ should reset, and dismissed notices may need to reappear. `localStorage` has no 
 ultrastorage lets you set a lifetime or an expiration date so expired values are treated as missing
 when read.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'acme' });
+export const appStorage = createStorage({ prefix: 'acme' });
 ```
 
-<Callout type="info" title="Expired entries are cleaned up lazily">
+```ts app.ts
+import { appStorage } from './lib/app-storage';
 
-Expired data behaves like a missing key. `getItem()` removes expired entries on read, while
-`has()`, `key()`, `keys()`, and `length` simply ignore them. Use `clearExpired()` to proactively
-sweep them.
-
-</Callout>
-
-```ts
 // Expires in 60 seconds
 appStorage.setItem('token', 'abc123', { ttl: 60_000 });
 
@@ -33,6 +27,14 @@ appStorage.setItem('session', { id: 1 }, { expiresAt: new Date('2025-12-31') });
 // Expired items return null
 appStorage.getItem('token'); // null (after 60s)
 ```
+
+<Callout type="info" title="Expired entries are cleaned up lazily">
+
+Expired data behaves like a missing key. `getItem()` removes expired entries on read, while
+`has()`, `key()`, `keys()`, and `length` simply ignore them. Use `clearExpired()` to proactively
+sweep them.
+
+</Callout>
 
 ## Cleanup and notifications
 

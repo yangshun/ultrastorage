@@ -85,7 +85,7 @@ description: 'Store rich values, expire stale data, validate reads, subscribe to
 Create one shared instance, then read and write real JavaScript values without manual serialization.
 Add expiration and subscriptions only where you need them.
 
-```ts
+```ts editor.ts
 import { createStorage } from 'ultrastorage';
 
 const storage = createStorage({ prefix: 'editor' });

@@ -9,14 +9,16 @@ Subscriptions let you react when a specific key changes, whether through ultrast
 page or a browser storage event from another tab. Use them to keep displayed preferences and other
 derived state in sync.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
+
+export const appStorage = createStorage({ prefix: 'app' });
 ```
 
 Other ultrastorage instances using the same `Storage` object and fully prefixed key notify the same listeners, even if those instances never subscribe themselves.
 
-```ts
-const appStorage = createStorage({ prefix: 'app' });
+```ts theme-sync.ts
+import { appStorage } from './lib/app-storage';
 
 function applyTheme() {
   document.documentElement.dataset.theme = appStorage.getItem<string>('theme') ?? 'system';
@@ -34,7 +36,7 @@ applyTheme(); // Subscribing does not invoke the listener immediately.
 
 Another module can create its own instance with the same prefix and notify the subscriber above:
 
-```ts
+```ts theme-settings.ts
 import { createStorage } from 'ultrastorage';
 
 const appStorage = createStorage({ prefix: 'app' });
@@ -43,7 +45,7 @@ appStorage.setItem('theme', 'dark'); // Notifies this page synchronously.
 
 When the subscriber is no longer needed, clean it up in the subscribing module:
 
-```ts
+```ts theme-sync.ts
 unsubscribe(); // Safe to call again; each subscription is independent.
 ```
 
@@ -72,7 +74,9 @@ type StorageListener = (change: StorageChange) => void;
 When subscribing with an array key, `change.key` is its opaque serialized string. Passing that value
 to `getItem()` reads the changed entry.
 
-```ts
+```ts user-sync.ts
+import { appStorage } from './lib/app-storage';
+
 const key = ['users', userId] as const;
 
 const unsubscribe = appStorage.subscribe(key, () => {

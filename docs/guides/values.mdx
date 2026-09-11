@@ -9,17 +9,19 @@ Plain JSON also loses types such as `Date`, `Map`, and `Set`.
 ultrastorage handles serialization for you, letting you read and write JavaScript values directly,
 with helpers for initializing and updating stored data.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'acme' });
+export const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 ## Rich values
 
 Uses [devalue](https://github.com/sveltejs/devalue) by default, but you can bring your own serializer.
 
-```ts
+```ts app.ts
+import { appStorage } from './lib/app-storage';
+
 appStorage.setItem('tags', new Set(['a', 'b', 'c']));
 appStorage.getItem('tags'); // Set {'a', 'b', 'c'}
 
@@ -37,7 +39,7 @@ for unsupported values and differences when using plain JSON.
 
 Pass a type argument to describe the expected shape of a stored value.
 
-```ts
+```ts app.ts
 interface User {
   name: string;
   age: number;
@@ -62,7 +64,7 @@ when validation is required.
 `getOrInit()` returns the existing value when present. Otherwise, it creates, stores, and returns a
 new value.
 
-```ts
+```ts app.ts
 const prefs = appStorage.getOrInit('prefs', () => ({
   theme: 'light',
   lang: 'en',
@@ -80,14 +82,14 @@ does not refresh or replace its expiration.
 
 Read, modify, and write a value in one call.
 
-```ts
+```ts app.ts
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 ```
 
 Every update is a new write. Omitting expiration options removes any previous TTL; passing a TTL
 starts a new lifetime from the update:
 
-```ts
+```ts app.ts
 appStorage.setItem('count', 1, { ttl: 60_000 });
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 // 'count' now has no expiration.
@@ -111,7 +113,7 @@ Both helpers read without a schema; see [presence and validation](/guides/valida
 
 Use an array of strings when several values belong to the same entity or scope:
 
-```ts
+```ts app.ts
 const userId = '42';
 
 appStorage.setItem(['users', userId, 'profile'], {
@@ -130,7 +132,7 @@ appStorage.getItem(['users', userId, 'preferences']);
 
 Equivalent arrays address the same entry, so you do not need to reuse the same array instance:
 
-```ts
+```ts app.ts
 appStorage.setItem(['documents', 'draft'], 'Hello');
 appStorage.getItem(['documents', 'draft']); // 'Hello'
 ```
@@ -138,7 +140,7 @@ appStorage.getItem(['documents', 'draft']); // 'Hello'
 Array keys preserve segment boundaries, so separator characters inside a segment do not change the
 key's structure:
 
-```ts
+```ts app.ts
 appStorage.setItem(['users', 'a:b'], 'first');
 appStorage.setItem(['users:a', 'b'], 'second');
 
@@ -152,7 +154,7 @@ See [`StorageKey`](/reference/storage#storagekey) for the complete key contract.
 
 The usual housekeeping.
 
-```ts
+```ts app.ts
 appStorage.has('user'); // true
 appStorage.removeItem('user');
 appStorage.has('user'); // false

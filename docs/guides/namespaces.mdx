@@ -9,12 +9,14 @@ or `theme` easy to overwrite accidentally.
 Namespaces give your keys a configurable prefix and keep operations such as `clear()` scoped to
 that namespace. This lets different parts of your application manage their data independently.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
+
+export const appStorage = createStorage({ prefix: 'acme' });
 ```
 
-```ts
-const appStorage = createStorage({ prefix: 'acme' });
+```ts app.ts
+import { appStorage } from './lib/app-storage';
 
 appStorage.setItem('theme', 'dark'); // stored as "acme:theme"
 appStorage.getItem('theme'); // 'dark'
@@ -43,8 +45,9 @@ In development, ultrastorage warns when you create an instance with a prefix suc
 
 For example, these instances share part of their storage scope:
 
-```ts
-const appStorage = createStorage({ prefix: 'acme' });
+```ts app.ts
+import { createStorage } from 'ultrastorage';
+
 const adminStorage = createStorage({ prefix: 'acme:admin' });
 
 adminStorage.setItem('theme', 'dark'); // stored as "acme:admin:theme"
@@ -71,8 +74,15 @@ override this for advanced use cases such as matching an existing stored-key con
 the default for new namespaces. To access entries already stored with another separator,
 configure the instance to match:
 
-```ts
-const appStorage = createStorage({ prefix: 'acme', separator: '/' });
+```ts lib/app-storage.ts
+import { createStorage } from 'ultrastorage';
+
+export const appStorage = createStorage({ prefix: 'acme', separator: '/' });
+```
+
+```ts app.ts
+import { appStorage } from './lib/app-storage';
+
 appStorage.setItem('theme', 'dark'); // stored key: acme/theme
 ```
 

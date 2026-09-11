@@ -14,10 +14,10 @@ keeping the same API.
 Pass `localStorage`, `sessionStorage`, or any object that implements `Storage` through the
 `storage` option. Use `createMemoryStorage()` for tests and server-side rendering.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage, createMemoryStorage } from 'ultrastorage';
 
-const appStorage = createStorage({
+export const appStorage = createStorage({
   prefix: 'acme',
   storage: typeof window === 'undefined' ? createMemoryStorage() : undefined,
 });
@@ -28,9 +28,11 @@ const appStorage = createStorage({
 `createMemoryStorage()` returns an in-memory `Storage` implementation for tests or server-side
 usage.
 
-```ts
+```ts lib/app-storage.ts
+import { createStorage, createMemoryStorage } from 'ultrastorage';
+
 const memory = createMemoryStorage();
-const appStorage = createStorage({ prefix: 'acme', storage: memory });
+export const appStorage = createStorage({ prefix: 'acme', storage: memory });
 ```
 
 Use a separate in-memory object for each server request when saving request-specific data. Separate
@@ -41,10 +43,11 @@ notifications.
 
 Don't like devalue? Bring your own `stringify`/`parse` and we won't judge. Much.
 
-```ts
+```ts lib/app-storage.ts
+import { createStorage } from 'ultrastorage';
 import superjson from 'superjson';
 
-const appStorage = createStorage({
+export const appStorage = createStorage({
   prefix: 'acme',
   serializer: { stringify: superjson.stringify, parse: superjson.parse },
 });
@@ -53,11 +56,11 @@ const appStorage = createStorage({
 If you provide your own serializer and want to keep `devalue` out of your bundle entirely, import
 from `ultrastorage/core` instead. The only difference is that `serializer` is required.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage/core';
 import superjson from 'superjson';
 
-const appStorage = createStorage({
+export const appStorage = createStorage({
   prefix: 'acme',
   serializer: { stringify: superjson.stringify, parse: superjson.parse },
 });
@@ -82,8 +85,14 @@ For example, plain JSON does not preserve `Map`, `Set`, or `Date` types, and dro
 whose value is `undefined`. Storing `undefined` as the entry value drops the envelope's required
 `value` property:
 
-```ts
-const appStorage = createStorage({ prefix: 'acme', serializer: JSON });
+```ts lib/app-storage.ts
+import { createStorage } from 'ultrastorage';
+
+export const appStorage = createStorage({ prefix: 'acme', serializer: JSON });
+```
+
+```ts app.ts
+import { appStorage } from './lib/app-storage';
 
 appStorage.setItem('optional', undefined);
 appStorage.getItem('optional'); // null: the stored envelope is not recognized

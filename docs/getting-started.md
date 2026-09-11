@@ -47,7 +47,7 @@ can read them; see [Caveats and migration](/guides/caveats).
 
 Store objects directly and add a TTL when data should only be used for a limited time:
 
-```ts
+```ts app.ts
 appStorage.setItem('user', { name: 'Alice', age: 30 }, { ttl: 5_000 });
 appStorage.getItem('user'); // { name: 'Alice', age: 30 }
 

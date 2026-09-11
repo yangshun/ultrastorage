@@ -10,16 +10,17 @@ expects.
 Schema validation checks values when you read them, helping you handle outdated or invalid data
 before using it.
 
-```ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'acme' });
+export const appStorage = createStorage({ prefix: 'acme' });
 ```
 
 Validate with any libraries that support [Standard Schema](https://github.com/standard-schema/standard-schema), as long as validation is synchronous.
 
-```ts
+```ts app.ts
 import { z } from 'zod';
+import { appStorage } from './lib/app-storage';
 
 const UserSchema = z.object({ name: z.string(), age: z.number() });
 
@@ -46,7 +47,7 @@ do not apply your schema, so an entry can be present while a validated read retu
 
 </Callout>
 
-```ts
+```ts app.ts
 appStorage.setItem('user', { name: 'Alice', age: 'unknown' });
 
 appStorage.has('user'); // true
@@ -64,7 +65,7 @@ requires an explicit write in a format the schema accepts on subsequent reads.
 
 </Callout>
 
-```ts
+```ts app.ts
 const CountSchema = z.string().transform(Number);
 
 appStorage.setItem('count', '2');
