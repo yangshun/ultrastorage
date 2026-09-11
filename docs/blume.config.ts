@@ -50,7 +50,6 @@ export default defineConfig({
         items: ['/resources/how-it-works', '/resources/alternatives'],
       },
     ],
-    actions: [{ label: 'npm', href: 'https://www.npmjs.com/package/ultrastorage' }],
   },
   search: { provider: 'orama' },
   ai: { llmsTxt: true },

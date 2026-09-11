@@ -1,0 +1,49 @@
+<footer class="site-footer">
+  <p>Built by Yangshun Tay.</p>
+  <nav aria-label="Footer">
+    <a href="https://github.com/yangshun/ultrastorage">GitHub</a>
+    <a href="https://www.npmjs.com/package/ultrastorage">npm</a>
+  </nav>
+</footer>
+
+<style>
+  .site-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    max-width: 90rem;
+    margin-inline: auto;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--blume-border);
+    color: var(--blume-muted-foreground);
+    font-size: 0.875rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  nav {
+    display: flex;
+    gap: 1rem;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--blume-foreground);
+  }
+
+  @media (max-width: 40rem) {
+    .site-footer {
+      align-items: flex-start;
+      flex-direction: column;
+      padding-inline: 1rem;
+    }
+  }
+</style>
