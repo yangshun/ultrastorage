@@ -3,7 +3,11 @@ title: 'Reading and writing values'
 description: 'Store rich JavaScript values, add TypeScript types, and initialize or update entries.'
 ---
 
-`localStorage` only stores strings, so saving objects means repeatedly serializing and parsing them. Plain JSON also loses types such as `Date`, `Map`, and `Set`. ultrastorage handles serialization for you, letting you read and write JavaScript values directly, with helpers for initializing and updating stored data.
+`localStorage` only stores strings, so saving objects means repeatedly serializing and parsing them.
+Plain JSON also loses types such as `Date`, `Map`, and `Set`.
+
+ultrastorage handles serialization for you, letting you read and write JavaScript values directly,
+with helpers for initializing and updating stored data.
 
 ```ts
 import { createStorage } from 'ultrastorage';
@@ -28,7 +32,7 @@ appStorage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
 
 ## TypeScript types
 
-TypeScript can't read `localStorage` at compile time (yet), but you can at least pretend your data is typed.
+Pass a type argument to describe the expected shape of a stored value.
 
 ```ts
 interface User {
@@ -47,11 +51,13 @@ appStorage.updateItem<User>('user', (current) => ({
 }));
 ```
 
-However, the true safe way is to validate with a [schema during read](/guides/validation).
+Type arguments do not validate stored data at runtime. Use a [schema during read](/guides/validation)
+when validation is required.
 
 ## Initialize a value
 
-Get the value if it exists, or writes to storage if it doesn't. Either way, you're getting something back.
+`getOrInit()` returns the existing value when present. Otherwise, it creates, stores, and returns a
+new value.
 
 ```ts
 const prefs = appStorage.getOrInit('prefs', () => ({
@@ -62,15 +68,56 @@ const prefs = appStorage.getOrInit('prefs', () => ({
 
 ## Update a value
 
-Read-modify-write in one call. Three separate statements was apparently too much work even when AI is writing all the code.
+Read, modify, and write a value in one call.
 
 ```ts
 appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1);
 ```
 
+## Array keys
+
+Use an array of strings when several values belong to the same entity or scope:
+
+```ts
+const userId = '42';
+
+appStorage.setItem(['users', userId, 'profile'], {
+  name: 'Alice',
+});
+appStorage.setItem(['users', userId, 'preferences'], {
+  theme: 'dark',
+});
+
+appStorage.getItem(['users', userId, 'profile']);
+// { name: 'Alice' }
+
+appStorage.getItem(['users', userId, 'preferences']);
+// { theme: 'dark' }
+```
+
+Equivalent arrays address the same entry, so you do not need to reuse the same array instance:
+
+```ts
+appStorage.setItem(['documents', 'draft'], 'Hello');
+appStorage.getItem(['documents', 'draft']); // 'Hello'
+```
+
+Array keys preserve segment boundaries, so separator characters inside a segment do not change the
+key's structure:
+
+```ts
+appStorage.setItem(['users', 'a:b'], 'first');
+appStorage.setItem(['users:a', 'b'], 'second');
+
+appStorage.getItem(['users', 'a:b']); // 'first'
+appStorage.getItem(['users:a', 'b']); // 'second'
+```
+
+See [`StorageKey`](/reference/storage#storagekey) for the complete key contract.
+
 ## Check, remove, and clear
 
-The usual housekeeping. Someone has to take out the trash.
+The usual housekeeping.
 
 ```ts
 appStorage.has('user'); // true

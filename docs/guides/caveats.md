@@ -3,7 +3,12 @@ title: 'Caveats and migration'
 description: 'Understand storage limits, synchronization boundaries, invalid data, and migration behavior.'
 ---
 
-Adding a storage wrapper does not remove browser storage limits or make existing data automatically compatible. Before adopting ultrastorage or changing its configuration, understand how it handles older entries, failed reads, expiration, and notifications. These details help you plan migrations and avoid unexpected behavior.
+Adding a storage wrapper does not remove browser storage limits or make existing data automatically
+compatible.
+
+Before adopting ultrastorage or changing its configuration, understand how it handles older
+entries, failed reads, expiration, and notifications. These details help you plan migrations and
+avoid unexpected behavior.
 
 - **Same-page writes must go through ultrastorage to notify**: Writes made directly through `localStorage`, `sessionStorage`, or a custom `Storage` object do not emit same-page notifications. Cross-tab browser events are still observed. Coordination is limited to instances sharing one loaded library runtime; separately bundled copies and mixed ESM/CJS runtimes do not share a registry.
 - **Use the React adapter for rendering**: `getItem()` returns fresh objects and can delete expired entries. `ultrastorage/react` supplies cached, side-effect-free snapshots internally; no public snapshot API is exposed.

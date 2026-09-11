@@ -3,7 +3,11 @@ title: 'Subscriptions'
 description: 'React to key changes within a page, across instances, and in other browser tabs.'
 ---
 
-Writing to storage does not automatically update the parts of your application that depend on it. Subscriptions let you react when a specific key changes, whether through ultrastorage in the same page or a browser storage event from another tab. Use them to keep displayed preferences and other derived state in sync.
+Writing to storage does not automatically update the parts of your application that depend on it.
+
+Subscriptions let you react when a specific key changes, whether through ultrastorage in the same
+page or a browser storage event from another tab. Use them to keep displayed preferences and other
+derived state in sync.
 
 ```ts
 import { createStorage } from 'ultrastorage';
@@ -45,7 +49,11 @@ unsubscribe(); // Safe to call again; each subscription is independent.
 
 Tabs sharing `localStorage` receive changes asynchronously through browser storage events. `sessionStorage` remains scoped to its tab; in-memory and custom `Storage` objects support same-page notifications between instances using the exact same object.
 
-Events describe storage changes, without carrying old/new values. Read the current value using `getItem()`, optionally with a schema. It may reflect a later write by the time you read it. Expiration stays lazy: only cleanup through `getItem()` or `clearExpired()` emits `expire`; passing the expiry time alone does not notify listeners.
+Events describe storage changes, without carrying old/new values. Read the current value using
+`getItem()`, optionally with a schema. It may reflect a later write by the time you read it.
+
+Expiration stays lazy: only cleanup through `getItem()` or `clearExpired()` emits `expire`; passing
+the expiry time alone does not notify listeners.
 
 ## Events and delivery
 
@@ -85,11 +93,25 @@ Equivalent array values share a subscription even when they are different array 
 | Write or deletion observed from another tab     | `set` or `remove`, `external`           |
 | Native storage clear observed from another tab  | `remove` per subscribed key, `external` |
 
-Identical serialized writes (including expiry metadata), missing-key removals, and failed mutations do not notify listeners. Changing only expiry metadata still counts as a write. External deletions are always `remove`, since the browser cannot identify expiration cleanup or a namespace clear as their cause. Matching external writes can notify even when `getItem()` returns `null` for invalid or foreign data.
+Identical serialized writes (including expiry metadata), missing-key removals, and failed mutations
+do not notify listeners. Changing only expiry metadata still counts as a write.
 
-Local notifications run after the mutation completes. Reentrant writes append their notifications to a FIFO queue instead of interrupting the current delivery. Bulk removals finish before notifications run; if a removal fails partway, completed removals still notify and the storage error propagates. Unsubscribing suppresses pending callbacks for that subscription. Subscriptions added during delivery do not receive already queued events.
+External deletions are always `remove`, since the browser cannot identify expiration cleanup or a
+namespace clear as their cause. Matching external writes can notify even when `getItem()` returns
+`null` for invalid or foreign data.
 
-Listener exceptions are reported through `globalThis.reportError`, or `console.error` where unavailable, without interrupting other listeners or making a completed write throw. Browser listeners are attached lazily and removed after the last unsubscribe for that `Storage` object.
+Local notifications run after the mutation completes. Reentrant writes append their notifications to
+a FIFO queue instead of interrupting the current delivery. Bulk removals finish before notifications
+run; if a removal fails partway, completed removals still notify and the storage error propagates.
+
+Unsubscribing suppresses pending callbacks for that subscription. Subscriptions added during
+delivery do not receive already queued events.
+
+Listener exceptions are reported through `globalThis.reportError`, or `console.error` where
+unavailable, without interrupting other listeners or making a completed write throw.
+
+Browser listeners are attached lazily and removed after the last unsubscribe for that `Storage`
+object.
 
 ## React components
 

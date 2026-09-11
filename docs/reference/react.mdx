@@ -7,11 +7,19 @@ Import the React adapter from `ultrastorage/react`. React 18 and 19 are supporte
 
 ## `createStorageHook(storage: UltraStorage): StorageHook`
 
-Binds a storage instance and returns a hook that accepts `(key, options?)`. The bound hook uses that instance's configured `Storage` object, prefix, separator, and serializer, with the same [read options](#read-options) and [return value](#return-value) as `useStorage`.
+Binds a storage instance and returns a hook that accepts `(key, options?)`.
+
+The bound hook uses that instance's configured `Storage` object, prefix, separator, and serializer,
+with the same [read options](#read-options) and [return value](#return-value) as `useStorage`.
 
 <Callout type="tip" title="Recommended for shared storage">
 
-**Prefer `createStorageHook()` for a shared application storage instance.** Use `useStorage()` directly when a component receives or switches its instance, or when a one-off call needs no named hook. Both have the same behavior; the bound hook saves passing the instance on each call. See [which hook to use](/guides/react#which-hook-should-i-use) for examples and guidance.
+**Prefer `createStorageHook()` for a shared application storage instance.** Use `useStorage()`
+directly when a component receives or switches its instance, or when a one-off call needs no named
+hook.
+
+Both have the same behavior; the bound hook saves passing the instance on each call. See
+[which hook to use](/guides/react#which-hook-should-i-use) for examples and guidance.
 
 </Callout>
 
@@ -67,7 +75,15 @@ export function CurrentTheme() {
 }
 ```
 
-Mount both components anywhere in the app. Toggling the theme updates both, and resetting it removes the stored entry so both display `'light'`. They also respond to `appStorage.setItem('theme', 'dark')` outside React. Both consumers use the same schema and default so they agree on invalid or missing data. The schema validates stored values on read; the default is never automatically written. The one-hour button passes `ttl` to the setter. Expiration is lazy, so elapsed time alone does not trigger a render; see [snapshots and expiration](/guides/react#snapshots-and-expiration).
+Mount both components anywhere in the app. Toggling the theme updates both, and resetting it removes
+the stored entry so both display `'light'`. They also respond to
+`appStorage.setItem('theme', 'dark')` outside React.
+
+Both consumers use the same schema and default so they agree on invalid or missing data. The schema
+validates stored values on read; the default is never automatically written.
+
+The one-hour button passes `ttl` to the setter. Expiration is lazy, so elapsed time alone does not
+trigger a render; see [snapshots and expiration](/guides/react#snapshots-and-expiration).
 
 ## `useStorage(storage, key, options?)`
 
@@ -85,7 +101,10 @@ Use `useStorage()` when choosing the storage instance is part of the component's
 - **The instance can change.** For example, a workspace picker can select among existing storage instances with different prefixes. Passing the selected instance to `useStorage()` switches the subscription.
 - **You only need a one-off call.** A component can pass an existing instance directly without defining and exporting a named hook.
 
-Keep the instance stable between renders unless you intend to switch stores. When several components always use the same shared instance, prefer `createStorageHook()` to avoid passing it repeatedly. Both APIs support changing keys, so a dynamic key alone does not require `useStorage()`.
+Keep the instance stable between renders unless you intend to switch stores. When several components
+always use the same shared instance, prefer `createStorageHook()` to avoid passing it repeatedly.
+
+Both APIs support changing keys, so a dynamic key alone does not require `useStorage()`.
 
 | Parameter | Type                   | Description                                                           |
 | --------- | ---------------------- | --------------------------------------------------------------------- |
@@ -93,7 +112,10 @@ Keep the instance stable between renders unless you intend to switch stores. Whe
 | `key`     | `StorageKey`           | String or ordered array of string segments relative to the namespace. |
 | `options` | `UseStorageOptions<T>` | Optional display fallback and synchronous read schema.                |
 
-Here, `DailyCounter` receives its instance through props, so its parent chooses where the count is stored. The direct hook accepts the same read options as a bound hook. Write options go on the setter; this example uses an absolute `expiresAt` instead of a `ttl`:
+Here, `DailyCounter` receives its instance through props, so its parent chooses where the count is
+stored. The direct hook accepts the same read options as a bound hook.
+
+Write options go on the setter; this example uses an absolute `expiresAt` instead of a `ttl`:
 
 ```tsx
 import type { UltraStorage } from 'ultrastorage';
@@ -123,7 +145,11 @@ export function DailyCounter({ storage }: { storage: UltraStorage }) {
 }
 ```
 
-`count` and the updater's `previous` value are inferred as `number` from the schema and default. Each increment sets expiry to the next local midnight. Expiration is lazy here too; the counter does not automatically rerender at midnight. Use either `ttl` or `expiresAt` on a write, never both; omitting both writes a non-expiring entry.
+`count` and the updater's `previous` value are inferred as `number` from the schema and default. Each
+increment sets expiry to the next local midnight.
+
+Expiration is lazy here too; the counter does not automatically rerender at midnight. Use either
+`ttl` or `expiresAt` on a write, never both; omitting both writes a non-expiring entry.
 
 ### Read options
 
@@ -132,15 +158,33 @@ export function DailyCounter({ storage }: { storage: UltraStorage }) {
 | `defaultValue` | Display-only fallback when the read returns `null`; never automatically written. An omitted or `undefined` default uses `null`. |
 | `schema`       | Synchronous Standard Schema validation and transformation, matching `getItem()`. Infer the value type from its output.          |
 
-Missing, expired, foreign, unparseable, invalid, and stored-null values use the fallback. Valid stored `undefined` remains `undefined`. A non-null default removes `null` from the inferred value and updater input types. Defaults should match the schema output type; defaults themselves are not validated. Setter input uses that same output type, and writes are not schema-validated.
+Missing, expired, foreign, unparseable, invalid, and stored-null values use the fallback. Valid stored
+`undefined` remains `undefined`. A non-null default removes `null` from the inferred value and updater
+input types.
+
+Defaults should match the schema output type; defaults themselves are not validated. Setter input
+uses that same output type, and writes are not schema-validated.
 
 ### Return value
 
-`useStorage()` and the bound hook return a readonly `[value, setValue, removeValue]` tuple. `setValue(valueOrUpdater, storageOptions?)` accepts the existing `ttl` or `expiresAt` options; omitted expiration options write a non-expiring entry. Functional updates read the latest persisted value, apply schema validation and the fallback, then write the result. They are synchronous but are not atomic across tabs. `removeValue()` removes the entry and restores the displayed default.
+`useStorage()` and the bound hook return a readonly `[value, setValue, removeValue]` tuple.
+`setValue(valueOrUpdater, storageOptions?)` accepts the existing `ttl` or `expiresAt` options;
+omitted expiration options write a non-expiring entry.
+
+Functional updates read the latest persisted value, apply schema validation and the fallback, then
+write the result. They are synchronous but are not atomic across tabs. `removeValue()` removes the
+entry and restores the displayed default.
 
 ### Instance and subscription behavior
 
-Setter and remover identities remain stable while the storage instance and structural key stay the same. Equivalent array keys do not switch subscriptions when recreated during render. Changes to hook options apply after commit; switching instances or keys switches subscriptions. Use factory-created ultrastorage instances from `ultrastorage` or `ultrastorage/core`; structural mocks or independently loaded package copies are not supported by the private snapshot bridge. For tests, wrap `createMemoryStorage()` with `createStorage()`.
+Setter and remover identities remain stable while the storage instance and structural key stay the
+same. Equivalent array keys do not switch subscriptions when recreated during render.
+
+Changes to hook options apply after commit; switching instances or keys switches subscriptions.
+
+Use factory-created ultrastorage instances from `ultrastorage` or `ultrastorage/core`; structural
+mocks or independently loaded package copies are not supported by the private snapshot bridge. For
+tests, wrap `createMemoryStorage()` with `createStorage()`.
 
 ## Exported types
 

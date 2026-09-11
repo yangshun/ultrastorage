@@ -13,15 +13,30 @@ This is what lets `ultrastorage` tell its own entries apart from random keys alr
 
 ## Serialization by default, not by accident
 
-By default, `ultrastorage` uses [`devalue`](https://github.com/sveltejs/devalue) instead of `JSON.stringify()`. The point is not novelty. It's that JSON quietly loses or mangles useful JavaScript values like `Set`, `Map`, `Date`, `RegExp`, `BigInt`, `undefined`, `NaN`, and circular references.
+By default, `ultrastorage` uses [`devalue`](https://github.com/sveltejs/devalue) instead of
+`JSON.stringify()`.
 
-The serializer is configurable on purpose. If you want `superjson`, or plain JSON for a more constrained setup, you can swap in your own `stringify` and `parse` methods and keep the rest of the API unchanged. If you bring your own serializer, import from `ultrastorage/core` to keep `devalue` out of your bundle entirely.
+The point is not novelty. It's that JSON quietly loses or mangles useful JavaScript values like
+`Set`, `Map`, `Date`, `RegExp`, `BigInt`, `undefined`, `NaN`, and circular references.
+
+The serializer is configurable on purpose. If you want `superjson`, or plain JSON for a more
+constrained setup, you can swap in your own `stringify` and `parse` methods and keep the rest of the
+API unchanged.
+
+If you bring your own serializer, import from `ultrastorage/core` to keep `devalue` out of your
+bundle entirely.
 
 ## Expiration is lazy on read
 
-TTL support is implemented as metadata on the entry, not as a background cleanup job. When you call `getItem()`, expired entries are treated as missing and removed immediately. `has()`, `key()`, and `length` also treat expired entries as missing, but they do not mutate storage.
+TTL support is implemented as metadata on the entry, not as a background cleanup job.
 
-That split is deliberate. Reads that already need the value can pay the cleanup cost, while bookkeeping-style operations stay predictable and side-effect free. If you want to proactively sweep old entries, `clearExpired()` is the explicit escape hatch.
+When you call `getItem()`, expired entries are treated as missing and removed immediately. `has()`,
+`key()`, and `length` also treat expired entries as missing, but they do not mutate storage.
+
+That split is deliberate. Reads that already need the value can pay the cleanup cost, while
+bookkeeping-style operations stay predictable and side-effect free.
+
+If you want to proactively sweep old entries, `clearExpired()` is the explicit escape hatch.
 
 ## Namespaces stay in their lane
 
@@ -43,4 +58,8 @@ It also matches the library's actual shape better: you're configuring an ultrast
 
 Schema validation happens when values come back out of storage, not when they go in. That's the trust boundary that matters. Browser storage is user-tamperable, and even valid data at write time can become invalid later if your schema changes.
 
-So `getItem(key, { schema })` validates the retrieved value right before your app uses it. If validation fails, you get `null`. If the schema is async, `ultrastorage` rejects it immediately rather than hiding asynchronous behavior behind a synchronous storage API.
+So `getItem(key, { schema })` validates the retrieved value right before your app uses it. If
+validation fails, you get `null`.
+
+If the schema is async, `ultrastorage` rejects it immediately rather than hiding asynchronous
+behavior behind a synchronous storage API.

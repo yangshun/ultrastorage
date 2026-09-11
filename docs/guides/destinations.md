@@ -4,9 +4,10 @@ description: 'Choose where values are saved and how they are encoded.'
 ---
 
 A destination is where ultrastorage saves values. Persistent browser data may belong in
-`localStorage`, tab-specific data in `sessionStorage`, and test or server data in memory. You may
-also need a particular serialization format. ultrastorage lets you configure both while keeping
-the same API.
+`localStorage`, tab-specific data in `sessionStorage`, and test or server data in memory.
+
+You may also need a particular serialization format. ultrastorage lets you configure both while
+keeping the same API.
 
 ## Choose a destination
 

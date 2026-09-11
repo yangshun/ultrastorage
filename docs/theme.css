@@ -12,7 +12,26 @@
 }
 
 .prose h3 {
-  font-size: 1.125rem;
+  margin-top: 2.5rem;
+  font-size: 1.25rem;
+}
+
+.prose :is(h1, h2, h3, h4, h5, h6) code {
+  font-size: inherit;
+}
+
+.prose :is(h1, h2, h3, h4, h5, h6):has(> .blume-heading-anchor) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.prose :is(h1, h2, h3, h4, h5, h6):has(> .blume-heading-anchor)::after {
+  flex: 1;
+  min-width: 2rem;
+  height: 1px;
+  background: var(--blume-border);
+  content: '';
 }
 
 .prose:has(.home-actions) > h2 {

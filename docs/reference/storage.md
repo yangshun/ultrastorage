@@ -24,7 +24,7 @@ Also available from `ultrastorage/core` where `serializer` is **required** and `
 
 Returns a `UltraStorage` instance, that has the same interface as [`Storage`](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), with additional APIs.
 
-## Storage instance
+Create and reuse a namespaced instance for application state:
 
 ```ts
 import { createStorage } from 'ultrastorage';
@@ -32,7 +32,19 @@ import { createStorage } from 'ultrastorage';
 const appStorage = createStorage({ prefix: 'my-app' });
 ```
 
+## Storage instance
+
+The examples below use the `appStorage` instance created above. Its methods follow the familiar
+`Storage` API while accepting rich JavaScript values:
+
+```ts
+appStorage.setItem('theme', 'dark');
+appStorage.getItem('theme'); // 'dark'
+```
+
 The `UltraStorage` instance exposes the following methods and properties. Signatures below use `appStorage` as the instance name.
+
+### `StorageKey`
 
 Key-taking methods use the exported `StorageKey` type:
 
@@ -42,6 +54,21 @@ type StorageKey = string | readonly string[];
 
 String keys are stored unchanged relative to the namespace. Array keys are serialized from their
 ordered string segments into an opaque canonical string without using `separator`.
+
+Use a string for a single identifier or an array to preserve structural segments:
+
+```ts
+const userId = '42';
+
+appStorage.setItem('theme', 'dark');
+appStorage.setItem(['users', userId], {
+  name: 'Alice',
+  role: 'admin',
+});
+
+appStorage.getItem(['users', userId]);
+// { name: 'Alice', role: 'admin' }
+```
 
 ### `getItem()`
 
@@ -64,6 +91,16 @@ Options:
 | -------- | ---------------- | --------------------------------------------------------------- |
 | `schema` | `StandardSchema` | Validate the value during read. Async schemas are not supported |
 
+Use a schema to validate the persisted value and infer its type:
+
+```ts
+import { z } from 'zod';
+
+const ThemeSchema = z.enum(['light', 'dark']);
+const theme = appStorage.getItem('theme', { schema: ThemeSchema });
+// 'light' | 'dark' | null
+```
+
 ### `setItem()`
 
 Serializes and stores a value.
@@ -85,12 +122,30 @@ Options:
 
 `ttl` and `expiresAt` cannot be used together.
 
+Store rich values and optionally expire them:
+
+```ts
+appStorage.setItem(
+  'draft',
+  {
+    title: 'Introducing ultrastorage',
+    updatedAt: new Date(),
+  },
+  { ttl: 86_400_000 },
+);
+```
+
 ### `removeItem()`
 
 Removes a single key from the current namespace.
 
 ```ts
 appStorage.removeItem(key: StorageKey): void;
+```
+
+```ts
+appStorage.removeItem('draft');
+appStorage.getItem('draft'); // null
 ```
 
 ### `has()`
@@ -103,6 +158,12 @@ appStorage.has(key: StorageKey): boolean;
 
 Expired entries are treated as missing and are not removed by `has()`.
 
+```ts
+if (!appStorage.has('preferences')) {
+  appStorage.setItem('preferences', { theme: 'system' });
+}
+```
+
 ### `clear()`
 
 Removes all entries written by `ultrastorage` in the current namespace.
@@ -112,6 +173,16 @@ appStorage.clear(): void;
 ```
 
 Entries outside the namespace and values not written by `ultrastorage` are left untouched.
+
+```ts
+appStorage.setItem('theme', 'dark');
+localStorage.setItem('analytics-id', 'abc123');
+
+appStorage.clear();
+
+appStorage.getItem('theme'); // null
+localStorage.getItem('analytics-id'); // 'abc123'
+```
 
 ### `getOrInit()`
 
@@ -133,6 +204,15 @@ Options:
 | `expiresAt` | `Date \| number` | Absolute expiration time     |
 
 `ttl` and `expiresAt` cannot be used together.
+
+Initialize a value only when the key is missing or expired:
+
+```ts
+const preferences = appStorage.getOrInit('preferences', () => ({
+  theme: 'system',
+  locale: 'en',
+}));
+```
 
 `getOrInit()` is useful for migrating from an existing `localStorage` (but non-`ultrastorage`) key. To do that, specify a `factory` function that reads from the existing `localStorage` key.
 
@@ -161,6 +241,11 @@ Options:
 
 `ttl` and `expiresAt` cannot be used together.
 
+```ts
+const count = appStorage.updateItem<number>('cart-count', (current) => (current ?? 0) + 1);
+// 1 when the key was previously missing
+```
+
 ### `subscribe()`
 
 Observe one key and receive `set`, `remove`, or `expire` events.
@@ -174,12 +259,31 @@ appStorage.subscribe(
 
 Returns an idempotent unsubscribe function. See the [subscription guide](/guides/subscriptions) for the event types, timing, errors, and cross-tab behavior.
 
+Read the latest value when the subscribed key changes:
+
+```ts
+const unsubscribe = appStorage.subscribe('theme', (change) => {
+  const theme = appStorage.getItem<'light' | 'dark'>('theme');
+  console.log(change.type, theme);
+});
+
+appStorage.setItem('theme', 'dark'); // Logs: set dark
+unsubscribe();
+```
+
 ### `clearExpired()`
 
 Removes only expired entries in the current namespace.
 
 ```ts
 appStorage.clearExpired(): void;
+```
+
+```ts
+appStorage.setItem('search-results', ['first', 'second'], { ttl: 5 * 60_000 });
+
+// Later, such as when the application starts again:
+appStorage.clearExpired();
 ```
 
 ### `length`
@@ -194,6 +298,13 @@ Expired entries are excluded from the count but not removed unless read via `get
 
 Each access scans and decodes entries in the namespace. Use `keys()` to enumerate all keys in one
 scan instead of repeatedly reading `length` and calling `key()`.
+
+```ts
+appStorage.setItem('theme', 'dark');
+appStorage.setItem('locale', 'en');
+
+console.log(appStorage.length); // 2
+```
 
 ### `key()`
 
@@ -271,3 +382,15 @@ createMemoryStorage(): Storage;
 ```
 
 Useful for tests or server-side usage.
+
+```ts
+import { createMemoryStorage, createStorage } from 'ultrastorage';
+
+const testStorage = createStorage({
+  prefix: 'test',
+  storage: createMemoryStorage(),
+});
+
+testStorage.setItem('theme', 'dark');
+testStorage.getItem('theme'); // 'dark'
+```

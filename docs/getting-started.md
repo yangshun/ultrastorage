@@ -16,8 +16,9 @@ npm install ultrastorage
 your shared instance.
 
 Creating an instance lets you choose options such as a key prefix, where values are stored
-(`localStorage`, `sessionStorage`, or memory), and how values are encoded. Export it once and reuse
-it so those settings stay consistent across your app.
+(`localStorage`, `sessionStorage`, or memory), and how values are encoded.
+
+Export it once and reuse it so those settings stay consistent across your app.
 
 ```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
@@ -51,7 +52,10 @@ appStorage.getItem('user'); // null
 
 ## Use with React
 
-In a React 18 or 19 application, import `createStorageHook` from `ultrastorage/react` and bind it to your shared `appStorage` instance. Create the bound hook outside components; no provider or separate adapter package is required.
+In a React 18 or 19 application, import `createStorageHook` from `ultrastorage/react` and bind it to
+your shared `appStorage` instance.
+
+Create the bound hook outside components; no provider or separate adapter package is required.
 
 ```ts lib/use-app-storage.ts
 import { createStorageHook } from 'ultrastorage/react';
@@ -78,7 +82,11 @@ export function ThemePicker() {
 }
 ```
 
-`defaultValue` is displayed when the key is missing and is never automatically written. Use `'use client'` in frameworks with React Server Components. See the [React guide](/guides/react) for schemas, expiration, and server rendering, or the [React API reference](/reference/react) for hook options.
+`defaultValue` is displayed when the key is missing and is never automatically written. Use
+`'use client'` in frameworks with React Server Components.
+
+See the [React guide](/guides/react) for schemas, expiration, and server rendering, or the
+[React API reference](/reference/react) for hook options.
 
 ## Choose an entry point
 
@@ -88,7 +96,11 @@ export function ThemePicker() {
 | `ultrastorage/core`  | Your own serializer, with no bundled devalue.                       |
 | `ultrastorage/react` | `useStorage` and `createStorageHook` for React 18 and 19.           |
 
-Create storage instances outside components and reuse them throughout your app. Construction is safe on the server because default localStorage access is deferred until the first operation. Ordinary reads and writes still require `localStorage` or another configured `Storage` object to be available; use [memory](/guides/destinations#save-values-in-memory) for server operations.
+Create storage instances outside components and reuse them throughout your app. Construction is safe
+on the server because default localStorage access is deferred until the first operation.
+
+Ordinary reads and writes still require `localStorage` or another configured `Storage` object to be
+available; use [memory](/guides/destinations#save-values-in-memory) for server operations.
 
 ## Next steps
 
