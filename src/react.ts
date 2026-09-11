@@ -15,6 +15,8 @@ import { createSnapshotReader } from './snapshots';
 import type { UltraStorage, StorageKey, StorageOptions } from './types';
 
 export interface UseStorageOptions<T> {
+  /** Update when the entry expires without deleting it. Defaults to false. */
+  reactiveExpiration?: boolean;
   /**
    * Displayed when the read returns null and during SSR/initial hydration.
    * Never automatically persisted. Omitted or undefined defaults use null;
@@ -51,6 +53,7 @@ export interface StorageHook {
   <T>(
     key: StorageKey,
     options: {
+      reactiveExpiration?: boolean;
       schema: StandardSchemaV1<unknown, T>;
       defaultValue: NoInfer<Exclude<T, null | undefined>>;
     },
@@ -68,17 +71,18 @@ const getServerSnapshot = () => null;
 /**
  * Subscribe to a key relative to the instance's prefix and infer schema output.
  * Treat returned objects as immutable and replace them through the setter.
- * Rendering never writes defaults or removes expired entries. Expiration has
- * no timer; later reads or cleanup notifications reveal an expired value.
+ * Rendering never writes defaults or removes expired entries. Opt in with
+ * reactiveExpiration to update when the deadline passes; timers may run late.
  * @param storage A factory-created instance from ultrastorage or ultrastorage/core.
  * @param key Key to observe; changing it switches the subscription.
- * @param options Display-only fallback and optional synchronous read schema.
+ * @param options Display-only fallback, synchronous read schema, and opt-in reactive expiration.
  * @returns A readonly [value, setValue, removeValue] tuple.
  */
 export function useStorage<T>(
   storage: UltraStorage,
   key: StorageKey,
   options: {
+    reactiveExpiration?: boolean;
     schema: StandardSchemaV1<unknown, T>;
     defaultValue: NoInfer<Exclude<T, null | undefined>>;
   },
@@ -105,9 +109,10 @@ export function useStorage<T>(
     () => createSnapshotReader(storage, serializedKey),
     [storage, serializedKey],
   );
+  const reactiveExpiration = options?.reactiveExpiration ?? false;
   const subscribe = useCallback(
-    (listener: () => void) => storage.subscribe(serializedKey, listener),
-    [storage, serializedKey],
+    (listener: () => void) => storage.subscribe(serializedKey, listener, { reactiveExpiration }),
+    [storage, serializedKey, reactiveExpiration],
   );
   const snapshot = useSyncExternalStore(subscribe, read, getServerSnapshot);
   const schema = options?.schema;

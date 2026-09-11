@@ -15,11 +15,11 @@ representation, and listener cleanup.
 
 ## Opt-in reactive expiration
 
-- [ ] Notify subscribed consumers when an entry expires without requiring another read or cleanup.
-- [ ] Update React hook values when their subscribed entries expire.
+- [x] Notify subscribed consumers when an entry expires without requiring another read or cleanup.
+- [x] Update React hook values when their subscribed entries expire.
 
-Useful for temporary notices and cached UI state. Keep lazy expiration as the default.
-Define timer ownership and cleanup, rescheduling after writes or cross-tab changes,
-interaction with namespace subscriptions, and whether expiry notifications also remove
-stored data. Recheck timestamps after delayed timers or tab suspension; browser timers
-cannot guarantee notification at the exact expiration time. Preserve SSR safety.
+Available through `{ reactiveExpiration: true }` on key subscriptions and React hooks.
+Lazy expiration remains the default. Subscription-owned timers recheck deadlines and notify
+without deleting entries; browser throttling can delay delivery. See
+[reactive expiration](docs/guides/expiration.mdx#reactive-expiration).
+Namespace subscription behavior remains part of the separate namespace subscriptions feature.

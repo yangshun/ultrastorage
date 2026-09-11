@@ -15,4 +15,5 @@ export type {
   StorageKey,
   StorageListener,
   StorageOptions,
+  SubscribeOptions,
 } from './types';

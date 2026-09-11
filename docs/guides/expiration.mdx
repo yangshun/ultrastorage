@@ -1,6 +1,6 @@
 ---
 title: 'Expiration'
-description: 'Set a TTL or an absolute expiration time and understand lazy cleanup.'
+description: 'Set a TTL or an absolute expiration time and use optional reactive notifications and lazy cleanup.'
 ---
 
 Some data is only useful for a limited time: cached responses become stale, temporary preferences
@@ -36,7 +36,7 @@ sweep them.
 
 ## Cleanup and notifications
 
-Passing an expiration timestamp does not schedule a timer or notify subscribers. Cleanup through `getItem()` or `clearExpired()` emits an `expire` event. Bookkeeping reads (`has()`, `key()`, `keys()`, and `length`) exclude expired entries without deleting them.
+By default, passing an expiration timestamp does not schedule a timer or notify subscribers. Cleanup through `getItem()` or `clearExpired()` emits an `expire` event. Bookkeeping reads (`has()`, `key()`, `keys()`, and `length`) exclude expired entries without deleting them.
 
 `ttl` and `expiresAt` cannot be used together. Both accept finite millisecond values; `expiresAt`
 also accepts a valid Date.
@@ -47,6 +47,46 @@ or a React setter. `getOrInit()` leaves expiration unchanged when it returns an 
 see [initialization](/guides/values#initialize-a-value) and [updates](/guides/values#update-a-value).
 
 For React rendering, see [snapshots and expiration](/guides/react#snapshots-and-expiration).
+
+## Reactive expiration
+
+Opt in per subscription to receive an `expire` event when the deadline passes, without
+waiting for a read or cleanup:
+
+```ts
+const unsubscribe = appStorage.subscribe(
+  'notice',
+  (change) => {
+    if (change.type === 'expire') {
+      console.log('The notice has expired');
+    }
+  },
+  { reactiveExpiration: true },
+);
+```
+
+Only opted-in listeners receive timer events. The timer does not delete the stored entry;
+its expiration metadata remains inspectable. A listener that calls `getItem()` may trigger
+cleanup, and later cleanup can emit another `expire` event to all listeners.
+
+Each subscription owns its timer and uses its instance's serializer. Writes, deadline changes,
+and cross-tab events reschedule it. Unsubscribing cancels it. Missing, unreadable, and
+non-expiring entries need no timer. Already-expired entries notify asynchronously after subscribing.
+An unchanged observed entry and deadline are announced only once per subscription.
+
+Timers recheck the stored entry and current time before notifying. Window focus and returning
+to a visible page also recheck opted-in subscriptions, without waiting for delayed timers.
+These browser listeners are shared across backends and removed after the last reactive
+subscription unsubscribes. Repeated focus and visibility events do not repeat an expiration
+notification for the same observed entry and deadline. Browser throttling or tab
+suspension may delay notification; exact timing is not guaranteed. Long deadlines are checked
+in chunks. Timer checks that fail to access the backend report the error and stop until another
+storage change or focus/visibility recheck retries them.
+
+React hooks accept `{ reactiveExpiration: true }` too; see
+[snapshots and expiration](/guides/react#snapshots-and-expiration). Rendering and SSR never
+start timers. Explicit server-side subscriptions with a supplied backend can use timers,
+which do not keep the process alive where `unref()` is supported.
 
 ## Inspect expiration
 

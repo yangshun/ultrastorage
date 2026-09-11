@@ -417,10 +417,15 @@ Observe one key and receive `set`, `remove`, or `expire` events.
 appStorage.subscribe(
   key: StorageKey,
   listener: StorageListener,
+  options?: SubscribeOptions,
 ): () => void;
 ```
 
-Returns an idempotent unsubscribe function. See the [subscription guide](/guides/subscriptions) for the event types, timing, errors, and cross-tab behavior.
+`SubscribeOptions` is exported from the main and core entry points. Its optional
+`reactiveExpiration: boolean` defaults to `false`. When enabled, timer-driven `expire` events
+notify this subscription without deleting data; later cleanup may emit another `expire` event.
+
+Returns an idempotent unsubscribe function that also cancels its timer. See the [subscription guide](/guides/subscriptions) for the event types, timing, errors, and cross-tab behavior.
 
 Read the latest value when the subscribed key changes:
 

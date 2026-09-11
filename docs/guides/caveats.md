@@ -109,7 +109,7 @@ Avoid invoking importing reads during React rendering.
 - **Helpers are synchronous and non-atomic**: Factories and updaters are not awaited, and read-modify-write operations can race across tabs or callers ([helper semantics](/guides/values#update-a-value)).
 - **Initialization can run again**: Stored `null` causes `getOrInit()` to call its factory again, and returning an existing value does not refresh its TTL ([initialization](/guides/values#initialize-a-value)).
 - **Updates preserve expiration**: An `updateItem()` call without expiration options keeps the current unexpired deadline. Pass `{ expiresAt: null }` to remove it ([updating values](/guides/values#update-a-value)).
-- **Expiration has no timer**: Elapsed time alone triggers neither cleanup nor notifications, and expired entries can occupy storage until [lazy cleanup](/guides/expiration#cleanup-and-notifications).
+- **Expiration is lazy by default**: Opt in to [reactive expiration](/guides/expiration#reactive-expiration) for timer notifications. Timers do not delete entries, which can occupy storage until cleanup.
 - **Same-page notifications require the same runtime**: Direct backend writes do not notify locally, and separately loaded package copies or mixed ESM/CJS runtimes do not share a registry ([subscriptions](/guides/subscriptions)).
 - **Use the React adapter for rendering**: Ordinary reads return fresh objects and can delete expired entries, while the adapter supplies [cached, side-effect-free snapshots](/guides/react#snapshots-and-expiration).
 - **Some string keys alias array keys**: Strings matching the [reserved array-key encoding](/reference/storage#reserved-array-key-encoding) address array keys and are returned as arrays during enumeration.

@@ -54,8 +54,10 @@ Tabs sharing `localStorage` receive changes asynchronously through browser stora
 Events describe storage changes, without carrying old/new values. Read the current value using
 `getItem()`, optionally with a schema. It may reflect a later write by the time you read it.
 
-Expiration stays lazy: only cleanup through `getItem()` or `clearExpired()` emits `expire`; passing
-the expiry time alone does not notify listeners.
+Expiration stays lazy by default. Pass `{ reactiveExpiration: true }` as the third argument
+to `subscribe()` for timer-driven `expire` events without deletion. Only opted-in listeners receive
+these events; later cleanup may emit another `expire` to all listeners. See
+[reactive expiration](/guides/expiration#reactive-expiration) for scheduling and cleanup behavior.
 
 ## Events and delivery
 
@@ -94,6 +96,7 @@ Equivalent array values share a subscription even when they are different array 
 | `removeItem()`                                  | `remove`, `local`                       |
 | `clear()`                                       | `remove` per affected key, `local`      |
 | Cleanup through `getItem()` or `clearExpired()` | `expire`, `local`                       |
+| Timer deadline, opted-in subscriptions only     | `expire`, `local`                       |
 | Write or deletion observed from another tab     | `set` or `remove`, `external`           |
 | Native storage clear observed from another tab  | `remove` per subscribed key, `external` |
 

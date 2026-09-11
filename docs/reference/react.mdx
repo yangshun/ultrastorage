@@ -84,7 +84,7 @@ the stored entry so both display `'light'`. They also respond to
 Both consumers use the same schema and default so they agree on invalid or missing data. The schema
 validates stored values on read; the default is never automatically written.
 
-The one-hour button passes `ttl` to the setter. Expiration is lazy, so elapsed time alone does not
+The one-hour button passes `ttl` to the setter. Expiration is lazy by default, so elapsed time alone does not
 trigger a render; see [snapshots and expiration](/guides/react#snapshots-and-expiration).
 
 ## `useStorage(storage, key, options?)`
@@ -154,10 +154,11 @@ unexpired deadline; `expiresAt: null` removes expiration.
 
 ### Read options
 
-| Option         | Behavior                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `defaultValue` | Display-only fallback when the read returns `null`; never automatically written. An omitted or `undefined` default uses `null`. |
-| `schema`       | Synchronous Standard Schema validation and transformation, matching `getItem()`. Infer the value type from its output.          |
+| Option               | Behavior                                                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `defaultValue`       | Display-only fallback when the read returns `null`; never automatically written. An omitted or `undefined` default uses `null`. |
+| `reactiveExpiration` | Optional boolean, default `false`. Update at expiration without deleting data; timers may run late.                             |
+| `schema`             | Synchronous Standard Schema validation and transformation, matching `getItem()`. Infer the value type from its output.          |
 
 Missing, expired, foreign, unparseable, invalid, and stored-null values use the fallback. Valid stored
 `undefined` remains `undefined`. A non-null default removes `null` from the inferred value and updater

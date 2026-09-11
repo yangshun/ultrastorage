@@ -72,6 +72,12 @@ export interface StorageChange {
   readonly source: 'local' | 'external';
 }
 
+/** Options for observing one key. Lazy expiration remains the default. */
+export interface SubscribeOptions {
+  /** Notify when the entry expires, without removing it. Timers may run late. */
+  reactiveExpiration?: boolean;
+}
+
 export type StorageListener = (change: StorageChange) => void;
 
 interface UltraStorageExtensions {
@@ -86,11 +92,12 @@ interface UltraStorageExtensions {
 
   /**
    * Listens for changes to a key, without immediately invoking the listener.
-   * Local notifications are synchronous; external browser events arrive asynchronously.
-   * Expiration is lazy: only expiration cleanup emits an event, not the passage of time.
+   * Local mutation notifications are synchronous; browser and timer events are asynchronous.
+   * Expiration is lazy by default. Opt in to timer-driven expire events without cleanup.
+   * Later cleanup may emit another expire event.
    * Returns an unsubscribe function that is safe to call repeatedly.
    */
-  subscribe(key: StorageKey, listener: StorageListener): () => void;
+  subscribe(key: StorageKey, listener: StorageListener, options?: SubscribeOptions): () => void;
 
   /**
    * The number of non-expired entries in the current namespace.

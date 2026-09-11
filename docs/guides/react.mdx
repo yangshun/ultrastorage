@@ -187,8 +187,23 @@ is applied.
 Inline schemas and object defaults are supported, but recreating them can change projected value
 identity.
 
-Rendering never deletes expired entries or writes defaults. There are no expiration timers: a mounted
+Rendering never deletes expired entries or writes defaults. Expiration is lazy by default: a mounted
 component is not scheduled to render just because time passes.
+
+Opt in to update the hook value to its default (or `null`) when the entry expires:
+
+```tsx
+const [notice] = useAppStorage<string>('notice', {
+  defaultValue: 'Ready',
+  reactiveExpiration: true,
+});
+```
+
+The option also works with `useStorage(storage, key, options)`. Timers belong to committed
+subscriptions and are canceled on unmount, key or storage changes, or disabling the option.
+SSR and rendering never start timers. Stored data remains intact until cleanup; background tabs
+may update late. Returning to a visible page or focusing the window rechecks expiration.
+See [reactive expiration](/guides/expiration#reactive-expiration).
 
 A subsequent snapshot read recognizes expiration; `getItem()` or `clearExpired()` performs actual
 cleanup and notifies listeners. A write made directly through the configured `Storage` object

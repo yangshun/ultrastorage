@@ -153,7 +153,7 @@ unsubscribe(); // Safe to call again; each subscription is independent.
 
 Tabs sharing `localStorage` receive changes asynchronously through browser storage events. `sessionStorage` remains scoped to its tab; in-memory and custom `Storage` objects support same-page notifications between instances using the exact same object.
 
-Events describe storage changes, without carrying old/new values. Read the current value using `getItem()`, optionally with a schema. It may reflect a later write by the time you read it. Expiration stays lazy: only cleanup through `getItem()` or `clearExpired()` emits `expire`; passing the expiry time alone does not notify listeners.
+Events describe storage changes, without carrying old/new values. Read the current value using `getItem()`, optionally with a schema. It may reflect a later write by the time you read it. Expiration stays lazy by default. Pass `{ reactiveExpiration: true }` as the third argument to `subscribe()` to receive `expire` when the deadline passes, without deleting the entry. React hooks accept the same option. Later cleanup through `getItem()` or `clearExpired()` may emit another `expire` event. Timers may run late.
 
 ### Check, remove, and clear
 

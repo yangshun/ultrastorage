@@ -35,6 +35,96 @@ afterEach(() => {
 });
 
 describe('React storage hooks', () => {
+  it('reactively expires to the default and cleans up when options or keys change', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const backend = createMemoryStorage();
+    const storage = createStorage({ storage: backend });
+    const other = createStorage({ storage: createMemoryStorage() });
+    storage.setItem('a', 1, { ttl: 10 });
+    storage.setItem('b', 2, { ttl: 100 });
+    other.setItem('b', 3, { ttl: 100 });
+    const hook = renderHook(
+      ({ enabled, key, instance }) =>
+        useStorage(instance, key, {
+          schema: numberSchema,
+          defaultValue: 0,
+          reactiveExpiration: enabled,
+        }),
+      { initialProps: { enabled: true, key: 'a', instance: storage } },
+    );
+    expectTypeOf(hook.result.current[0]).toEqualTypeOf<number>();
+    expect(hook.result.current[0]).toBe(1);
+    act(() => {
+      vi.advanceTimersByTime(11);
+    });
+    expect(hook.result.current[0]).toBe(0);
+    expect(backend.getItem('a')).not.toBeNull();
+    hook.rerender({ enabled: true, key: 'b', instance: storage });
+    expect(vi.getTimerCount()).toBe(1);
+    hook.rerender({ enabled: false, key: 'b', instance: storage });
+    expect(vi.getTimerCount()).toBe(0);
+    hook.rerender({ enabled: true, key: 'b', instance: other });
+    expect(hook.result.current[0]).toBe(3);
+    expect(vi.getTimerCount()).toBe(1);
+    hook.rerender({ enabled: true, key: 'b', instance: storage });
+    expect(hook.result.current[0]).toBe(2);
+    expect(vi.getTimerCount()).toBe(1);
+    hook.rerender({ enabled: true, key: 'missing', instance: storage });
+    expect(vi.getTimerCount()).toBe(0);
+    hook.rerender({ enabled: true, key: 'b', instance: storage });
+    hook.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('refreshes a suspended hook on window focus without running its timer', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const backend = createMemoryStorage();
+    const storage = createStorage({ storage: backend });
+    storage.setItem('notice', 'Temporary', { ttl: 10 });
+    const hook = renderHook(() =>
+      useStorage(storage, 'notice', {
+        defaultValue: 'Ready',
+        reactiveExpiration: true,
+      }),
+    );
+    expect(hook.result.current[0]).toBe('Temporary');
+    vi.setSystemTime(2000);
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(hook.result.current[0]).toBe('Ready');
+    expect(backend.getItem('notice')).not.toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('bound hooks expire in Strict Mode but server rendering never schedules timers', () => {
+    vi.useFakeTimers();
+    const storage = createStorage({ storage: createMemoryStorage() });
+    storage.setItem('key', 1, { ttl: 10 });
+    const useBound = createStorageHook(storage);
+    function Consumer() {
+      const [value] = useBound('key', {
+        schema: numberSchema,
+        defaultValue: 0,
+        reactiveExpiration: true,
+      });
+      expectTypeOf(value).toEqualTypeOf<number>();
+      return createElement('span', null, value);
+    }
+    expect(renderToString(createElement(Consumer))).toContain('0');
+    expect(vi.getTimerCount()).toBe(0);
+    const view = render(createElement(StrictMode, null, createElement(Consumer)));
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => {
+      vi.advanceTimersByTime(11);
+    });
+    expect(view.container.textContent).toBe('0');
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('preserves expiration through setters and observes metadata changes', () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000);

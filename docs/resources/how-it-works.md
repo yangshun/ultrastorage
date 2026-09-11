@@ -28,7 +28,8 @@ bundle entirely.
 
 ## Expiration is lazy on read
 
-TTL support is implemented as metadata on the entry, not as a background cleanup job.
+TTL support is implemented as metadata on the entry. Optional reactive expiration schedules
+notification timers per subscription; cleanup remains lazy.
 
 When you call `getItem()`, expired entries are treated as missing and removed immediately. `has()`,
 `key()`, `keys()`, and `length` also treat expired entries as missing, but they do not mutate storage.

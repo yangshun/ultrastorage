@@ -21,6 +21,7 @@ import type {
   StorageKey,
   StorageListener,
   StorageOptions,
+  SubscribeOptions,
 } from './types';
 
 const ENTRY_MARKER = '__us';
@@ -339,9 +340,15 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   const api = {
-    subscribe: (key: StorageKey, listener: StorageListener) => {
+    subscribe: (key: StorageKey, listener: StorageListener, options?: SubscribeOptions) => {
       const serializedKey = serializeStorageKey(key);
-      return subscribe(getBackend(), prefix + serializedKey, serializedKey, listener);
+      return subscribe(
+        getBackend(),
+        prefix + serializedKey,
+        serializedKey,
+        listener,
+        options?.reactiveExpiration ? serializer : undefined,
+      );
     },
     get length() {
       let count = 0;
