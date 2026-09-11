@@ -15,7 +15,7 @@ All options are optional.
 
 | Option       | Type         | Default        | Description                                                |
 | ------------ | ------------ | -------------- | ---------------------------------------------------------- |
-| `prefix`     | `string`     | —              | Key prefix for namespacing                                 |
+| `prefix`     | `string`     | None           | Key prefix for namespacing                                 |
 | `separator`  | `string`     | `":"`          | Advanced override for the separator between prefix and key |
 | `storage`    | `Storage`    | `localStorage` | Where values are saved                                     |
 | `serializer` | `Serializer` | `devalue`      | Custom serializer with `stringify` and `parse` methods     |

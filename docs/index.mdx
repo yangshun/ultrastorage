@@ -1,6 +1,6 @@
 ---
 title: 'localStorage, upgraded.'
-description: 'Store rich values, expire stale data, validate reads, subscribe to changes, and use it from React—all through the Storage API you already know.'
+description: 'Store rich values, expire stale data, validate reads, subscribe to changes, and use it from React through a familiar Storage API.'
 ---
 
 <div class="home-actions">
@@ -12,7 +12,7 @@ description: 'Store rich values, expire stale data, validate reads, subscribe to
   </a>
 </div>
 
-## Keep the API. Drop the chores.
+## Compare with localStorage
 
 <div class="home-comparison">
   <div class="home-comparison-header" aria-hidden="true">
@@ -80,7 +80,7 @@ description: 'Store rich values, expire stale data, validate reads, subscribe to
   </div>
 </div>
 
-## One familiar API. A lot less housekeeping.
+## Create a storage instance
 
 Create one shared instance, then read and write real JavaScript values without manual serialization.
 Add expiration and subscriptions only where you need them.
@@ -103,14 +103,14 @@ storage.setItem(
 storage.subscribe('draft:post-42', refreshPreview);
 ```
 
-## Built for real application state
+## Features
 
 <CardGroup cols={2}>
-  <Card title="Store JavaScript, not JSON" href="/guides/values" icon="braces" arrow>
+  <Card title="Store JavaScript, not strings" href="/guides/values" icon="braces" arrow>
     Keep Dates, Maps, Sets, BigInts, RegExps, circular references, and more. Skip the
     `JSON.stringify` dance.
   </Card>
-  <Card title="Let stale data expire" href="/guides/expiration" icon="timer" arrow>
+  <Card title="Expire stored values" href="/guides/expiration" icon="timer" arrow>
     Give each write a TTL or absolute expiration time. Expired values behave like missing keys and
     can be swept in one call.
   </Card>

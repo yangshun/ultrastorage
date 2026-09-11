@@ -1,6 +1,6 @@
 # ultrastorage
 
-Gives `localStorage` superpowers. Handles serialization of rich types, key expiration, namespacing, and schema validation — so you don't have to.
+Adds rich-value serialization, expiration, namespacing, and schema validation to `localStorage`.
 
 ## Features
 
@@ -32,7 +32,7 @@ Refer to the [documentation](docs/resources/how-it-works.md) for more explanatio
 
 ### Basic
 
-Store and retrieve objects without the `JSON.stringify` dance. You're welcome.
+Store and retrieve objects without calling `JSON.stringify()` and `JSON.parse()`.
 
 ```ts
 // lib/app-storage.ts
@@ -65,7 +65,7 @@ separator characters and empty strings inside segments are preserved.
 
 ### Store anything
 
-Yes, `localStorage` can finally handle a `Set`, or any data type you throw at it. It only took the entire JavaScript ecosystem to get here.
+Store `Set`, `Map`, `Date`, and other values that JSON does not preserve.
 
 Uses [devalue](https://github.com/sveltejs/devalue) by default, but you can bring your own serializer.
 
@@ -82,7 +82,7 @@ appStorage.getItem('date'); // Date 2025-01-01T00:00:00.000Z
 
 ### TTL / expiration
 
-Store data temporarily. Like Snapchat, but for your storage keys.
+Set a lifetime or an absolute expiration time for stored data.
 
 Expired data behaves like a missing key. `getItem()` removes expired entries on read, while `has()`, `key()`, `keys()`, and `length` simply ignore them. Use `clearExpired()` to proactively sweep them.
 
@@ -99,7 +99,7 @@ appStorage.getItem('token'); // null (after 60s)
 
 ### Namespacing
 
-Because your keys deserve their own personal space, away from whatever chaos other libraries left behind.
+Add a prefix to group related keys and avoid collisions with other storage users.
 
 ```ts
 const appStorage = createStorage({ prefix: 'acme' });
@@ -154,7 +154,7 @@ Events describe storage changes, without carrying old/new values. Read the curre
 
 ### Check, remove, and clear
 
-The usual housekeeping. Someone has to take out the trash.
+Check for entries, remove individual entries, or clear a namespace.
 
 ```ts
 appStorage.has('user'); // true
@@ -167,7 +167,7 @@ appStorage.clearExpired(); // remove only expired entries
 
 ### Type-safe access
 
-TypeScript can't read `localStorage` at compile time (yet), but you can at least pretend your data is typed.
+Provide a type argument to type values returned from storage.
 
 ```ts
 interface User {
@@ -190,7 +190,7 @@ However, the true safe way is to validate with a [schema during read](#schema-va
 
 ### Schema validation
 
-Trust no one — especially since browser storage is open to tampering by users. Validate with any libraries that support [Standard Schema](https://github.com/standard-schema/standard-schema), as long as validation is synchronous.
+Browser storage can be modified outside your application. Validate reads with any library that supports synchronous [Standard Schema](https://github.com/standard-schema/standard-schema) validation.
 
 ```ts
 import { z } from 'zod';
@@ -216,7 +216,7 @@ const appStorage = createStorage({
 
 ### Custom serializer
 
-Don't like devalue? Bring your own `stringify`/`parse` and we won't judge. Much.
+Provide custom `stringify` and `parse` methods to use another serialization format.
 
 ```ts
 import superjson from 'superjson';
@@ -241,11 +241,11 @@ const appStorage = createStorage({
 
 ### Additional APIs
 
-Because `getItem` and `setItem` weren't enough, here are some bonus methods you didn't know you needed.
+Use these helpers for common initialization and update operations.
 
 #### `appStorage.getOrInit()`
 
-Get the value if it exists, or writes to storage if it doesn't. Either way, you're getting something back.
+Return the existing value, or create, store, and return a new value when the key is missing.
 
 ```ts
 const prefs = appStorage.getOrInit('prefs', () => ({
@@ -256,7 +256,7 @@ const prefs = appStorage.getOrInit('prefs', () => ({
 
 #### `appStorage.updateItem()`
 
-Read-modify-write in one call. Three separate statements was apparently too much work even when AI is writing all the code.
+Read, update, and write a value in one call.
 
 ```ts
 appStorage.updateItem('count', (current) => (current ?? 0) + 1);
