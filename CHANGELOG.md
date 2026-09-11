@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.7.0 - 2026-09-11
+
+- Added array storage keys through the exported `StorageKey` type across storage methods, subscriptions, and React hooks. Equivalent arrays address the same entry without depending on array identity.
+- Added `keys()` to enumerate non-expired keys in one scan. Both `key()` and `keys()` restore array keys as fresh arrays of their original string segments.
+- Added development warnings when a namespace prefix contains its separator, indicating possible overlap with broader namespaces.
+- Fixed package imports in browser environments without a global `process`, with smoke checks for both ESM and CommonJS builds.
+- Hardened stored-entry validation and rejected non-finite expiration timestamps, including invalid dates and overflowing TTLs.
+- Fixed Standard Schema handling for successful results with `issues: undefined` and asynchronous validators returning promises or thenables. Unsupported asynchronous validation now consumes rejections before throwing a synchronous error.
+- Improved in-memory key enumeration by caching ordered keys until insertions or deletions change them.
+- Expanded documentation for React usage, namespace overlap, storage durability, migration, and synchronous helper behavior.
+
+### Upgrade notes
+
+- `key()` now returns `StorageKey | null` instead of `string | null`. Update callers that assume every enumerated key is a string. `UltraStorage` no longer intersects the native `Storage` type; use `UltraStorage` for application instances.
+- Existing string keys and `__us`/`__gs` entries remain supported. Avoid authoring string keys beginning with the reserved array-key prefix `\u0000us:a:`; canonical encoded strings address the same entries as their corresponding arrays.
+- Subscription events retain a string `change.key`; array keys use their opaque serialized form.
+- Invalid or non-finite `ttl` and `expiresAt` values now throw `TypeError`. Stored envelopes must have a value, version `1`, and an expiry of `null` or a finite number to be recognized.
+
 ## 0.6.0 - 2026-09-10
 
 - Renamed the package from `greatstorage` to `ultrastorage` and the exported `GreatStorage` type to `UltraStorage`.
