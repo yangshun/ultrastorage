@@ -115,10 +115,10 @@ appStorage.setItem<T = unknown>(
 
 Options:
 
-| Option      | Type             | Description                  |
-| ----------- | ---------------- | ---------------------------- |
-| `ttl`       | `number`         | Time-to-live in milliseconds |
-| `expiresAt` | `Date \| number` | Absolute expiration time     |
+| Option      | Type             | Description                         |
+| ----------- | ---------------- | ----------------------------------- |
+| `ttl`       | `number`         | Finite time-to-live in milliseconds |
+| `expiresAt` | `Date \| number` | Finite absolute expiration time     |
 
 `ttl` and `expiresAt` cannot be used together.
 
@@ -198,10 +198,10 @@ appStorage.getOrInit<T>(
 
 Options:
 
-| Option      | Type             | Description                  |
-| ----------- | ---------------- | ---------------------------- |
-| `ttl`       | `number`         | Time-to-live in milliseconds |
-| `expiresAt` | `Date \| number` | Absolute expiration time     |
+| Option      | Type             | Description                         |
+| ----------- | ---------------- | ----------------------------------- |
+| `ttl`       | `number`         | Finite time-to-live in milliseconds |
+| `expiresAt` | `Date \| number` | Finite absolute expiration time     |
 
 `ttl` and `expiresAt` cannot be used together.
 
@@ -234,10 +234,10 @@ appStorage.updateItem<T = unknown>(
 
 Options:
 
-| Option      | Type             | Description                  |
-| ----------- | ---------------- | ---------------------------- |
-| `ttl`       | `number`         | Time-to-live in milliseconds |
-| `expiresAt` | `Date \| number` | Absolute expiration time     |
+| Option      | Type             | Description                         |
+| ----------- | ---------------- | ----------------------------------- |
+| `ttl`       | `number`         | Finite time-to-live in milliseconds |
+| `expiresAt` | `Date \| number` | Finite absolute expiration time     |
 
 `ttl` and `expiresAt` cannot be used together.
 

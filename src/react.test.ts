@@ -180,6 +180,27 @@ describe('React storage hooks', () => {
     expect(storage.getItem('n')).toBe(11);
   });
 
+  it('uses successful schema results with undefined issues for reads and updates', () => {
+    const storage = createStorage({ storage: createMemoryStorage() });
+    const schema: StandardSchemaV1<unknown, number> = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: (value) =>
+          typeof value === 'number'
+            ? { value, issues: undefined }
+            : { issues: [{ message: 'Expected number' }] },
+      },
+    };
+    storage.setItem('count', 42);
+    const hook = renderHook(() => useStorage(storage, 'count', { schema, defaultValue: 0 }));
+
+    expect(hook.result.current[0]).toBe(42);
+    act(() => hook.result.current[1]((value) => value + 1));
+    expect(hook.result.current[0]).toBe(43);
+    expect(storage.getItem('count')).toBe(43);
+  });
+
   it('uses new committed defaults and schemas without replacing callbacks', () => {
     const storage = createStorage({ storage: createMemoryStorage() });
     const hook = renderHook(

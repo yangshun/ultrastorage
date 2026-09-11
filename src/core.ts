@@ -1,4 +1,4 @@
-import { decodeEntry, isStorageEntry, validateEntry } from './entry';
+import { decodeEntry, validateEntry } from './entry';
 import type { StorageEntryEnvelope } from './entry';
 import { deserializeStorageKey, serializeStorageKey } from './keys';
 import { registerSnapshotAccess } from './snapshots';
@@ -13,10 +13,14 @@ import type {
   StorageOptions,
 } from './types';
 
-declare const process: { env: { NODE_ENV?: string } };
-
 const ENTRY_MARKER = '__us';
-const warned = process.env.NODE_ENV !== 'production' ? new Set<string>() : undefined;
+const isProduction =
+  (
+    globalThis as typeof globalThis & {
+      process?: { env?: { NODE_ENV?: string } };
+    }
+  ).process?.env?.NODE_ENV === 'production';
+const warned = isProduction ? undefined : new Set<string>();
 
 // Implemented as a closure factory rather than a class so that internal helpers
 // (forEachEntry, removeEntries, serializer, etc.) are truly private, destructuring
@@ -61,11 +65,20 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     }
 
     if (options?.ttl != null) {
-      return Date.now() + options.ttl;
+      const expiry = Date.now() + options.ttl;
+      if (!Number.isFinite(expiry)) {
+        throw new TypeError('"ttl" must resolve to a finite expiration timestamp.');
+      }
+      return expiry;
     }
 
     if (options?.expiresAt != null) {
-      return options.expiresAt instanceof Date ? options.expiresAt.getTime() : options.expiresAt;
+      const expiry =
+        options.expiresAt instanceof Date ? options.expiresAt.getTime() : options.expiresAt;
+      if (!Number.isFinite(expiry)) {
+        throw new TypeError('"expiresAt" must be a finite expiration timestamp.');
+      }
+      return expiry;
     }
 
     return null;
@@ -75,7 +88,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     const expiry = resolveExpiry(options);
     const serializedKey = serializeStorageKey(key);
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (!isProduction) {
       if (value === null && !warned!.has(`null:${serializedKey}`)) {
         warned!.add(`null:${serializedKey}`);
         console.warn(
@@ -115,7 +128,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
 
     const value = factory();
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (!isProduction) {
       const serializedKey = serializeStorageKey(key);
       if (value === null && !warned!.has(`getOrInit:${serializedKey}`)) {
         warned!.add(`getOrInit:${serializedKey}`);
@@ -168,13 +181,9 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
         continue;
       }
 
-      try {
-        const entry = serializer.parse(raw);
-        if (isStorageEntry(entry)) {
-          yield [key, entry];
-        }
-      } catch {
-        // Not a ultrastorage entry, skip
+      const entry = decodeEntry(raw, serializer);
+      if (entry !== null) {
+        yield [key, entry];
       }
     }
   }
@@ -207,26 +216,11 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   function has(key: StorageKey): boolean {
-    const raw = getBackend().getItem(prefixedKey(key));
-
-    if (raw === null) {
+    const entry = readEntry(key);
+    if (entry === null || (entry.expiry != null && Date.now() > entry.expiry)) {
       return false;
     }
-
-    try {
-      const entry = serializer.parse(raw);
-      if (!isStorageEntry(entry)) {
-        return false;
-      }
-
-      if (entry.expiry != null && Date.now() > entry.expiry) {
-        return false;
-      }
-
-      return true;
-    } catch {
-      return false;
-    }
+    return true;
   }
 
   function key(index: number): StorageKey | null {

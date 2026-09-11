@@ -193,6 +193,21 @@ describe('ultrastorage', () => {
       ).toThrow('Cannot specify both "ttl" and "expiresAt"');
     });
 
+    it('rejects non-finite expiration values', () => {
+      expect(() => storage.setItem('nan-ttl', 'value', { ttl: NaN })).toThrow(
+        '"ttl" must resolve to a finite expiration timestamp',
+      );
+      expect(() => storage.setItem('infinite-ttl', 'value', { ttl: Infinity })).toThrow(
+        '"ttl" must resolve to a finite expiration timestamp',
+      );
+      expect(() =>
+        storage.setItem('invalid-date', 'value', { expiresAt: new Date('invalid') }),
+      ).toThrow('"expiresAt" must be a finite expiration timestamp');
+      expect(() => storage.setItem('infinite-date', 'value', { expiresAt: Infinity })).toThrow(
+        '"expiresAt" must be a finite expiration timestamp',
+      );
+    });
+
     it('persists value when no TTL is set', () => {
       vi.useFakeTimers();
       storage.setItem('permanent', 'value');
@@ -589,6 +604,47 @@ describe('ultrastorage', () => {
       expect(mockStorage.getItem('external')).toBe('keep me');
       expect(storage.getItem('internal')).toBe('managed');
     });
+
+    it('uses the JSON fallback consistently across storage APIs', () => {
+      const active = JSON.stringify({ __us: true, version: 1, value: 'legacy', expiry: null });
+      const expired = JSON.stringify({
+        __us: true,
+        version: 1,
+        value: 'expired',
+        expiry: Date.now() - 1,
+      });
+      mockStorage.setItem('active', active);
+      mockStorage.setItem('expired', expired);
+
+      expect(storage.getItem('active')).toBe('legacy');
+      expect(storage.has('active')).toBe(true);
+      expect(storage.length).toBe(1);
+      expect(storage.key(0)).toBe('active');
+
+      storage.clearExpired();
+      expect(mockStorage.getItem('expired')).toBeNull();
+      storage.clear();
+      expect(mockStorage.getItem('active')).toBeNull();
+    });
+
+    it.each([
+      [
+        'unsupported version',
+        JSON.stringify({ __us: true, version: 2, value: 'bad', expiry: null }),
+      ],
+      [
+        'non-numeric expiry',
+        JSON.stringify({ __us: true, version: 1, value: 'bad', expiry: 'never' }),
+      ],
+      ['non-finite expiry', '{"__us":true,"version":1,"value":"bad","expiry":1e400}'],
+    ])('rejects an entry with %s', (_, raw) => {
+      mockStorage.setItem('bad', raw);
+
+      expect(storage.getItem('bad')).toBeNull();
+      expect(storage.has('bad')).toBe(false);
+      expect(storage.length).toBe(0);
+      expect(storage.key(0)).toBeNull();
+    });
   });
 
   describe('namespacing', () => {
@@ -709,6 +765,19 @@ describe('ultrastorage', () => {
       expect(storage.getItem('name', { schema: stringSchema })).toBe('Alice');
     });
 
+    it('accepts successful schema results with an explicit undefined issues property', () => {
+      const schema = {
+        '~standard': {
+          version: 1 as const,
+          vendor: 'test',
+          validate: (value: unknown) => ({ value, issues: undefined }),
+        },
+      };
+      storage.setItem('count', 42);
+
+      expect(storage.getItem('count', { schema })).toBe(42);
+    });
+
     it('returns null when schema validation fails', () => {
       storage.setItem('count', 42);
       expect(storage.getItem('count', { schema: stringSchema })).toBeNull();
@@ -760,6 +829,27 @@ describe('ultrastorage', () => {
       expect(() => storage.getItem('key', { schema: asyncSchema })).toThrow(
         'Schema validation must be synchronous',
       );
+    });
+
+    it('rejects async schemas without leaking later promise rejections', async () => {
+      const schema = {
+        '~standard': {
+          version: 1 as const,
+          vendor: 'test',
+          async validate() {
+            await Promise.resolve();
+            throw new Error('Async validation failed');
+          },
+        },
+      };
+      storage.setItem('count', 42);
+
+      expect(() => storage.getItem('count', { schema })).toThrow(
+        'Schema validation must be synchronous',
+      );
+      // Give unhandled rejections a turn to surface to the test runner.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      expect(storage.getItem('count')).toBe(42);
     });
 
     it('respects TTL with schema validation', () => {

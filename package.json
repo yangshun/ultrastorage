@@ -52,11 +52,12 @@
   "scripts": {
     "check": "vp check",
     "build": "vp pack",
-    "prepublishOnly": "vp check && vp test run && vp pack",
+    "prepublishOnly": "vp check && vp test run && vp pack && node scripts/verify-package.mjs",
     "format": "vp fmt",
     "lint": "vp lint",
     "tc": "vp check",
     "test": "vp test run",
+    "test:package": "vp pack && node scripts/verify-package.mjs",
     "test:watch": "vp test",
     "prepare": "vp config",
     "test:coverage": "vp test run --coverage",

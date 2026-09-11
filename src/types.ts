@@ -4,12 +4,14 @@ export interface StorageOptions {
   /**
    * Time-to-live in milliseconds. If not set, the item never expires.
    * Cannot be used together with `expiresAt`.
+   * Must resolve to a finite expiration timestamp.
    */
   ttl?: number;
 
   /**
    * Absolute expiration time as a `Date` or Unix timestamp in milliseconds.
    * Cannot be used together with `ttl`.
+   * Must be a finite timestamp or valid `Date`.
    */
   expiresAt?: Date | number;
 }

@@ -32,8 +32,8 @@ appStorage.getItem('token'); // null (after 60s)
 
 Passing an expiration timestamp does not schedule a timer or notify subscribers. Cleanup through `getItem()` or `clearExpired()` emits an `expire` event. Bookkeeping reads (`has()`, `key()`, and `length`) exclude expired entries without deleting them.
 
-`ttl` and `expiresAt` cannot be used together. Both accept millisecond units; `expiresAt` also accepts
-a Date.
+`ttl` and `expiresAt` cannot be used together. Both accept finite millisecond values; `expiresAt`
+also accepts a valid Date.
 
 An entry expires when the current time is strictly greater than its expiry timestamp. A new write
 without expiration options removes any previous expiration.
