@@ -33,15 +33,13 @@ automatically; they remain stored and may no longer be found by reads, enumerati
 through the new configuration. Explicitly migrate existing entries if you need to change the
 prefix.
 
-<Callout type="warning" title="Avoid overlapping prefixes">
-
+:::warning[Avoid overlapping prefixes]
 An `acme` namespace matches stored keys starting with `acme:`, including those written by an
 `acme:admin` instance. Clearing the broader namespace can remove entries from both. Choose
 non-overlapping prefixes, such as `acme-app` and `acme-admin`, for independently managed data.
 
 In development, ultrastorage warns when you create an instance with a prefix such as `acme:admin`.
-
-</Callout>
+:::
 
 For example, these instances share part of their storage scope:
 

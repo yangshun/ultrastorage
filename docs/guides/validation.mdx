@@ -40,12 +40,10 @@ A TypeScript generic alone does not validate the persisted value. Browser storag
 
 For inferred React values and defaults, see [React schemas and types](/guides/react#schemas-and-types).
 
-<Callout type="info" title="Presence does not imply validity">
-
+:::info[Presence does not imply validity]
 `has()`, `keys()`, `key()`, and `length` check whether entries are recognized and non-expired. They
 do not apply your schema, so an entry can be present while a validated read returns `null`.
-
-</Callout>
+:::
 
 ```ts app.ts
 appStorage.setItem('user', { name: 'Alice', age: 'unknown' });
@@ -58,12 +56,10 @@ Schemas are supplied per read, not registered against a key. `getOrInit()` and `
 without a schema; their type arguments do not validate existing values. Validate explicitly when
 using these helpers with data that might have the wrong shape.
 
-<Callout type="warning" title="Transformations do not migrate stored data">
-
+:::warning[Transformations do not migrate stored data]
 A successful transformation changes the returned value without writing it back. Saving the result
 requires an explicit write in a format the schema accepts on subsequent reads.
-
-</Callout>
+:::
 
 ```ts app.ts
 const CountSchema = z.string().transform(Number);

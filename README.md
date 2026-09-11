@@ -9,7 +9,7 @@ Adds rich-value serialization, expiration, namespacing, and schema validation to
 - **Namespacing**: Group related keys with a `prefix` and scope operations such as `clear()` to that namespace
 - **Array keys**: Build structural keys from ordered string segments without separator collisions
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
-- **React hooks**: Optional [`ultrastorage/react` adapter](docs/guides/react.md) with typed values, functional updates, and server rendering
+- **React hooks**: Optional [`ultrastorage/react` adapter](docs/guides/react.mdx) with typed values, functional updates, and server rendering
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
 - **Choose where values are saved**: Use `localStorage`, `sessionStorage`, any object that implements `Storage`, or the included in-memory implementation
 - **ESM and CJS**: Tree-shakeable dual builds with full TypeScript types
@@ -19,6 +19,9 @@ Adds rich-value serialization, expiration, namespacing, and schema validation to
 ```sh
 npm install ultrastorage
 ```
+
+ultrastorage was previously published as `greatstorage`. Existing users can follow the
+[migration guide](docs/guides/caveats.md#migrating-from-greatstorage).
 
 ## How it works
 

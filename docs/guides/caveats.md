@@ -10,6 +10,22 @@ Before adopting ultrastorage or changing its configuration, understand how it ha
 entries, failed reads, expiration, and notifications. These details help you plan migrations and
 avoid unexpected behavior.
 
+## Migrating from greatstorage
+
+ultrastorage was previously published as `greatstorage`. To upgrade:
+
+1. Replace the `greatstorage` dependency with `ultrastorage`.
+2. Change imports from `greatstorage` to `ultrastorage`, including `greatstorage/core` to
+   `ultrastorage/core`.
+3. Rename type imports from `GreatStorage` to `UltraStorage`.
+
+Existing entries marked with `__gs` remain readable, so stored browser data does not need to be
+migrated. New writes use `__us`, which older versions of `greatstorage` cannot read. Update
+applications that share the same storage together rather than running old and new versions at the
+same time.
+
+## General caveats
+
 - **Namespaces can overlap**: A broad prefix includes matching nested prefixes, while an unprefixed instance can clear recognized entries across the backend; choose [non-overlapping prefixes](/guides/namespaces).
 - **Namespace changes need migration**: Changing `prefix` or `separator` does not rename existing entries and can make them inaccessible through the new configuration; keep [namespace settings](/guides/namespaces) stable or migrate the data explicitly.
 - **Reads and writes can throw**: Synchronous backend access, quota, serialization, and thrown schema errors propagate without a memory fallback; even expiration cleanup during a read can fail ([error handling](/reference/storage#error-handling)).

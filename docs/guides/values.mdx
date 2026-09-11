@@ -98,14 +98,12 @@ appStorage.updateItem<number>('count', (current) => (current ?? 0) + 1, { ttl: 6
 // 'count' now expires 60 seconds after this update.
 ```
 
-<Callout type="warning" title="Helpers are synchronous and non-atomic">
-
+:::warning[Helpers are synchronous and non-atomic]
 Factories and updaters must return synchronously: promises are passed directly to the serializer
 without being awaited and are rejected by the default serializer. Finish asynchronous work before
 calling the storage methods. `getOrInit()` and `updateItem()` are not atomic across tabs or
 concurrent callers.
-
-</Callout>
+:::
 
 Both helpers read without a schema; see [presence and validation](/guides/validation#read-semantics).
 

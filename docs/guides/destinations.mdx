@@ -69,13 +69,11 @@ export const appStorage = createStorage({
 Changing serializers can make existing entries unreadable. Prefer a new prefix when changing
 formats and explicitly migrate any values you need to retain.
 
-<Callout type="info" title="Serialization limits">
-
+:::info[Serialization limits]
 The default devalue serializer supports rich data, but rejects functions, promises, symbols, and
 arbitrary class instances. Serialization errors propagate from the write; see
 [error handling](/reference/storage#error-handling).
-
-</Callout>
+:::
 
 A custom serializer must synchronously encode and decode the entire storage envelope, including
 its value, marker, version, and expiration metadata. Its supported value types determine what you
@@ -99,13 +97,11 @@ appStorage.getItem('optional'); // null: the stored envelope is not recognized
 appStorage.has('optional'); // false
 ```
 
-<Callout type="info" title="JSON fallback only runs after a parser error">
-
+:::info[JSON fallback only runs after a parser error]
 When decoding an entry, ultrastorage first calls the configured parser. It tries `JSON.parse()`
 only if that parser throws. A parser that successfully returns an unrecognized envelope does not
 trigger the JSON fallback.
-
-</Callout>
+:::
 
 Both paths still require a recognized storage envelope; fallback does not make raw strings or
 ordinary JSON values readable. Use [explicit migration](/reference/storage#getorinit) for those

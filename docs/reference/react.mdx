@@ -5,6 +5,10 @@ description: 'React hook signatures, read options, return values, and exported t
 
 Import the React adapter from `ultrastorage/react`. React 18 and 19 are supported. See the [React guide](/guides/react) for setup, examples, snapshots, and server rendering.
 
+:::info[Adapters for other frameworks]
+Interested in an adapter for another framework? [File an issue](https://github.com/yangshun/ultrastorage/issues/new) or [open a pull request](https://github.com/yangshun/ultrastorage/pulls).
+:::
+
 ## `createStorageHook(storage: UltraStorage): StorageHook`
 
 Binds a storage instance and returns a hook that accepts `(key, options?)`.
@@ -12,16 +16,14 @@ Binds a storage instance and returns a hook that accepts `(key, options?)`.
 The bound hook uses that instance's configured `Storage` object, prefix, separator, and serializer,
 with the same [read options](#read-options) and [return value](#return-value) as `useStorage`.
 
-<Callout type="tip" title="Recommended for shared storage">
-
+:::tip[Recommended for shared storage]
 **Prefer `createStorageHook()` for a shared application storage instance.** Use `useStorage()`
 directly when a component receives or switches its instance, or when a one-off call needs no named
 hook.
 
 Both have the same behavior; the bound hook saves passing the instance on each call. See
 [which hook to use](/guides/react#which-hook-should-i-use) for examples and guidance.
-
-</Callout>
+:::
 
 Create the bound hook outside components; no provider is required.
 
@@ -87,11 +89,9 @@ trigger a render; see [snapshots and expiration](/guides/react#snapshots-and-exp
 
 ## `useStorage(storage, key, options?)`
 
-<Callout type="tip" title="Prefer createStorageHook for most usage">
-
+:::tip[Prefer createStorageHook for most usage]
 Most of the time, use **`createStorageHook()` instead** to bind your shared storage instance once. Use `useStorage()` directly when a component receives or switches its instance, or when a one-off call does not need a named hook.
-
-</Callout>
+:::
 
 Subscribes to a key and returns its current value with callbacks to write or remove it. Calling this hook directly is equivalent to calling a bound hook.
 

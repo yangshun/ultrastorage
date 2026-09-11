@@ -16,6 +16,11 @@ JavaScript or TypeScript and add React integration when you need it.
 npm install ultrastorage
 ```
 
+:::info[Previously called greatstorage]
+ultrastorage was previously published as `greatstorage`. Existing users can follow the
+[migration guide](/guides/caveats#migrating-from-greatstorage).
+:::
+
 ## Create a shared instance
 
 Use a shared storage instance so every part of your app reads and writes with the same namespace,
@@ -40,13 +45,11 @@ appStorage.getItem('theme'); // 'dark'
 appStorage.removeItem('theme');
 ```
 
-<Callout type="danger" title="Store only data you can afford to lose">
-
+:::danger[Store only data you can afford to lose]
 Store data your app can recreate or safely reset, such as cached responses and preferences.
 Browser storage can be cleared, so it should never hold the only copy of important data. Apply
 the same judgment you would when using `localStorage` directly.
-
-</Callout>
+:::
 
 `getItem()` returns deserialized values, and `clear()` only removes recognized entries within the
 configured namespace. Use methods such as `getItem('theme')` instead of property access such as
