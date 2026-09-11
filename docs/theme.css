@@ -1,3 +1,12 @@
+header a:has(> img[alt='ultrastorage']) {
+  gap: 0.5rem;
+}
+
+header img[alt='ultrastorage'] {
+  height: auto;
+  width: 1.125rem;
+}
+
 .prose {
   color: var(--blume-foreground);
   font-size: 16px;
