@@ -1,4 +1,10 @@
-import { decodeEntry, isPromiseLike, validateEntry, validateValue } from './entry';
+import {
+  decodeEntry,
+  decodeEntryResult,
+  isPromiseLike,
+  validateValue,
+  validateValueResult,
+} from './entry';
 import type { StorageEntryEnvelope } from './entry';
 import { deserializeStorageKey, serializeStorageKey } from './keys';
 import { registerSnapshotAccess } from './snapshots';
@@ -7,6 +13,8 @@ import type {
   CoreStorageOptions,
   ExpirationOptions,
   GetOptions,
+  ReadOptions,
+  StorageReadResult,
   UltraStorage,
   StorageChange,
   StorageExpiration,
@@ -63,17 +71,31 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     if (raw === null && options?.legacy) {
       return importLegacy(key, options);
     }
-    const entry = decodeEntry(raw, serializer);
-    if (entry === null) {
-      return null;
-    }
+    const result = readResult<T>(rawKey, raw, options);
+    return result.status === 'success' ? result.value : null;
+  }
 
+  function getItemResult<T = unknown>(
+    key: StorageKey,
+    options?: ReadOptions<T>,
+  ): StorageReadResult<T> {
+    const rawKey = prefixedKey(key);
+    return readResult(rawKey, getBackend().getItem(rawKey), options);
+  }
+
+  function readResult<T>(
+    rawKey: string,
+    raw: string | null,
+    options?: ReadOptions<T>,
+  ): StorageReadResult<T> {
+    const decoded = decodeEntryResult(raw, serializer);
+    if (decoded.status !== 'success') return decoded;
+    const entry = decoded.value;
     if (entry.expiry != null && Date.now() > entry.expiry) {
-      removeStoredItem(prefixedKey(key), 'expire');
-      return null;
+      removeStoredItem(rawKey, 'expire');
+      return { status: 'expired', expiresAt: entry.expiry };
     }
-
-    return validateEntry<T>(entry, options?.schema);
+    return validateValueResult<T>(entry.value, options?.schema);
   }
 
   function importLegacy<T>(key: StorageKey, options: GetOptions<T>): T | null {
@@ -331,6 +353,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
       return count;
     },
     getItem,
+    getItemResult,
     getExpiration,
     setExpiration,
     setItem,

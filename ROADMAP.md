@@ -13,16 +13,6 @@ not known in advance. Follow existing namespace matching and same-page/cross-tab
 boundaries. Define event behavior for bulk clears and native storage clears, array-key
 representation, and listener cleanup.
 
-## Detailed read results
-
-- [ ] Add an optional read API that distinguishes successful values (including stored
-      `null`), missing entries, expiration, foreign or unsupported data, parse failures,
-      and schema validation failures.
-
-Useful for debugging and choosing whether to initialize, recover, or discard data.
-Keep `getItem()` unchanged. Define a discriminated result type, expiration cleanup
-behavior, and which operational errors still throw; do not silently hide backend failures.
-
 ## Opt-in reactive expiration
 
 - [ ] Notify subscribed consumers when an entry expires without requiring another read or cleanup.

@@ -48,6 +48,18 @@ export interface GetOptions<T = unknown> {
   schema?: StandardSchemaV1<unknown, T>;
 }
 
+/** Options for a detailed read. Legacy imports are available through getItem only. */
+export type ReadOptions<T = unknown> = Pick<GetOptions<T>, 'schema'>;
+
+/** A detailed read outcome. Only success carries a value, which may itself be null. */
+export type StorageReadResult<T = unknown> =
+  | { status: 'success'; value: T }
+  | { status: 'missing' }
+  | { status: 'expired'; expiresAt: number }
+  | { status: 'unsupported' }
+  | { status: 'parse-error'; error: unknown }
+  | { status: 'validation-error'; issues: readonly StandardSchemaV1.Issue[] };
+
 /** A string key or an array of string segments serialized as one opaque key. */
 export type StorageKey = string | readonly string[];
 
@@ -96,6 +108,13 @@ interface UltraStorageExtensions {
    */
   getItem<T = unknown>(key: StorageKey, options: GetOptions<T>): T | null;
   getItem<T = unknown>(key: StorageKey): T | null;
+
+  /**
+   * Reads with a discriminated outcome, including successful stored null values.
+   * Expired entries are removed and notify subscribers, as with getItem.
+   * Backend failures, thrown schema errors, and asynchronous schemas still throw.
+   */
+  getItemResult<T = unknown>(key: StorageKey, options?: ReadOptions<T>): StorageReadResult<T>;
 
   /**
    * Serializes and stores a value, optionally with a TTL or absolute expiration time.

@@ -6,6 +6,8 @@ export type {
   ExpirationOptions,
   GetOptions,
   LegacyOptions,
+  ReadOptions,
+  StorageReadResult,
   UltraStorage,
   Serializer,
   StorageChange,

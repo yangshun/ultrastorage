@@ -139,6 +139,50 @@ import stores the schema output (or decoded value) without expiration, removes t
 and notifies subscribers. This opted-in read can write and throw on write or cleanup failures.
 See [importing existing values](/guides/caveats#importing-existing-values) for examples and failure behavior.
 
+### `getItemResult()`
+
+Reads a value with a distinct outcome for each reason it could not be returned.
+`getItem()` keeps its existing value-or-null behavior.
+
+```ts
+appStorage.getItemResult<T = unknown>(key: StorageKey, options?: ReadOptions<T>): StorageReadResult<T>;
+```
+
+`ReadOptions` accepts a Standard Schema via `schema`, with the same synchronous validation
+and output inference as `getItem()`. Legacy import is available only through `getItem()`.
+Both types are exported from `ultrastorage` and `ultrastorage/core`.
+
+| `status`           | Additional fields                           | Meaning                                                                                               |
+| ------------------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `success`          | `value: T`                                  | Read succeeded, including stored `null` or `undefined`.                                               |
+| `missing`          | None                                        | No entry exists at the key.                                                                           |
+| `expired`          | `expiresAt: number`                         | The deadline passed; the entry was removed.                                                           |
+| `unsupported`      | None                                        | Parsed data is foreign, has an unsupported version, or has an invalid envelope.                       |
+| `parse-error`      | `error: unknown`                            | Both the configured parser and JSON fallback failed; `error` is the configured parser's thrown value. |
+| `validation-error` | `issues: readonly StandardSchemaV1.Issue[]` | The schema returned validation issues.                                                                |
+
+```ts app.ts
+const result = appStorage.getItemResult<string | null>('theme');
+
+if (result.status === 'success') {
+  console.log(result.value); // A stored null is a successful read.
+} else if (result.status === 'missing') {
+  appStorage.setItem('theme', 'light');
+} else if (result.status === 'validation-error') {
+  console.error(result.issues);
+}
+```
+
+Like `getItem()`, this method removes an expired entry when `Date.now() > expiresAt`
+and emits an `expire` notification to subscribers. At the exact deadline the entry is
+still readable. A subsequent read after cleanup returns `missing`. Expiration is checked
+before schema validation. Other unsuccessful outcomes preserve the stored bytes.
+
+The configured serializer is tried first; JSON is tried only if that parser throws.
+Valid current `__us` and legacy `__gs` envelopes are both accepted. Backend access and
+removal failures, exceptions thrown by schemas, and unsupported asynchronous validation
+still throw. These operational failures are not converted into read statuses.
+
 ### `setItem()`
 
 Serializes and stores a value.
