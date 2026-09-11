@@ -865,6 +865,73 @@ describe('ultrastorage', () => {
     // Each test uses unique key names to avoid collisions with the
     // module-level warned set which deduplicates across the process.
 
+    it.each([
+      { prefix: 'warn-prefix:admin', separator: undefined },
+      { prefix: 'warn-prefix/admin', separator: '/' },
+      { prefix: 'warn-prefix.*admin', separator: '.*' },
+    ])('warns at creation when $prefix contains its separator', ({ prefix, separator }) => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const instance = createStorage({ storage: mockStorage, prefix, separator });
+
+      expect(spy).toHaveBeenCalledOnce();
+      expect(spy.mock.calls[0]![0]).toContain(`Prefix "${prefix}"`);
+      expect(spy.mock.calls[0]![0]).toContain(`contains separator "${separator ?? ':'}"`);
+      expect(spy.mock.calls[0]![0]).toContain('clear()');
+      expect(spy.mock.calls[0]![0]).toContain('migration');
+
+      instance.setItem('theme', 'dark');
+      expect(instance.getItem('theme')).toBe('dark');
+      expect(mockStorage.key(0)).toBe(`${prefix}${separator ?? ':'}theme`);
+      instance.clear();
+      expect(mockStorage.length).toBe(0);
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('warns without accessing the default backend during construction', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vi.stubGlobal('localStorage', undefined);
+      try {
+        expect(() => createStorage({ prefix: 'warn-lazy:admin' })).not.toThrow();
+        expect(spy).toHaveBeenCalledOnce();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('deduplicates prefix warnings across instances and entry points', async () => {
+      const { createStorage: createStorageCore } = await import('./core-entry');
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const prefix = 'warn-dedup:admin';
+      createStorage({ prefix });
+      createStorage({ prefix, separator: ':' });
+      createStorageCore({ prefix, serializer: JSON });
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('warns separately for different prefix and separator combinations', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      createStorage({ prefix: 'warn-distinct:/admin', separator: ':' });
+      createStorage({ prefix: 'warn-distinct:/admin', separator: '/' });
+      createStorage({ prefix: 'warn-distinct:/settings', separator: '/' });
+
+      expect(spy).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([
+      { prefix: undefined, separator: undefined },
+      { prefix: '', separator: ':' },
+      { prefix: 'warn-safe', separator: undefined },
+      { prefix: 'warn-safe:admin', separator: '/' },
+      { prefix: 'warn-safe|admin', separator: '||' },
+      { prefix: 'warn-empty', separator: '' },
+    ])('does not warn for prefix $prefix with separator $separator', (options) => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      createStorage(options);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
     it('warns when storing null', () => {
       const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       storage.setItem('warn-null', null);

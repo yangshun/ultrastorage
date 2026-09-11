@@ -8,6 +8,23 @@ describe('production mode', () => {
     vi.resetModules();
   });
 
+  it.each([
+    { prefix: 'app:admin', separator: undefined },
+    { prefix: 'app/admin', separator: '/' },
+  ])('allows prefix $prefix without warnings', async ({ prefix, separator }) => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    const { createStorage, createMemoryStorage } = await import('./index');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const backend = createMemoryStorage();
+    const storage = createStorage({ storage: backend, prefix, separator });
+
+    storage.setItem('theme', 'dark');
+    expect(storage.getItem('theme')).toBe('dark');
+    expect(backend.key(0)).toBe(`${prefix}${separator ?? ':'}theme`);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('stores, initializes, and expires values without development warnings', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.resetModules();

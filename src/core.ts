@@ -35,6 +35,16 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   const prefix = options.prefix ? options.prefix + separator : '';
   const serializer = options.serializer;
 
+  if (!isProduction && options.prefix && separator && options.prefix.includes(separator)) {
+    const warningKey = `prefix:${JSON.stringify([options.prefix, separator])}`;
+    if (!warned!.has(warningKey)) {
+      warned!.add(warningKey);
+      console.warn(
+        `[ultrastorage] Prefix ${JSON.stringify(options.prefix)} contains separator ${JSON.stringify(separator)}. Its entries may also match a broader namespace and be removed by that namespace's \`clear()\`. Use non-overlapping prefixes for independent data; changing existing prefixes requires migration.`,
+      );
+    }
+  }
+
   function prefixedKey(key: StorageKey): string {
     return prefix + serializeStorageKey(key);
   }
