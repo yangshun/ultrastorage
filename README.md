@@ -21,7 +21,7 @@ npm install ultrastorage
 ```
 
 ultrastorage was previously published as `greatstorage`. Existing users can follow the
-[migration guide](docs/guides/caveats.md#migrating-from-greatstorage).
+[migration guide](docs/guides/migration.md#from-greatstorage).
 
 ## How it works
 

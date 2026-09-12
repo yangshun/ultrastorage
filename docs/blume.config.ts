@@ -38,6 +38,7 @@ export default defineConfig({
           '/guides/destinations',
           '/guides/subscriptions',
           '/guides/react',
+          '/guides/migration',
           '/guides/caveats',
         ],
       },

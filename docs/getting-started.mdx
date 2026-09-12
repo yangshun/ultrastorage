@@ -18,7 +18,7 @@ npm install ultrastorage
 
 :::info[Previously called greatstorage]
 ultrastorage was previously published as `greatstorage`. Existing users can follow the
-[migration guide](/guides/caveats#migrating-from-greatstorage).
+[migration guide](/guides/migration#from-greatstorage).
 :::
 
 ## Create a shared instance
@@ -54,7 +54,7 @@ the same judgment you would when using `localStorage` directly.
 `getItem()` returns deserialized values, and `clear()` only removes recognized entries within the
 configured namespace. Use methods such as `getItem('theme')` instead of property access such as
 `storage.theme`. Existing raw `localStorage` values need explicit migration before this instance
-can read them; see [Caveats and migration](/guides/caveats).
+can read them; see [Migration](/guides/migration).
 
 Store objects directly and add a TTL when data should only be used for a limited time:
 
@@ -130,4 +130,5 @@ available; use [memory](/guides/destinations#save-values-in-memory) for server o
 - [Read, write, and update values](/guides/values).
 - [Respond to storage changes](/guides/subscriptions).
 - [Connect React components](/guides/react).
+- [Move existing data into or out of ultrastorage](/guides/migration).
 - [Understand limitations](/guides/caveats).

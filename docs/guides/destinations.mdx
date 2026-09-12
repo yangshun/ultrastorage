@@ -104,8 +104,8 @@ trigger the JSON fallback.
 :::
 
 Both paths still require a recognized storage envelope; fallback does not make raw strings or
-ordinary JSON values readable. Use [explicit migration](/reference/storage#getorinit) for those
-values.
+ordinary JSON values readable. Use [explicit migration](/guides/migration#importing-existing-values)
+for those values.
 
 Entries left in an unreadable format still occupy backend storage, and `clear()` cannot remove
 them. Keep access to the old serializer while migrating, or remove known obsolete keys explicitly;

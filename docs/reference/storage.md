@@ -32,7 +32,7 @@ reads, rich-value serialization, expiration, namespacing, and subscriptions.
 
 `getItem()` returns deserialized values rather than always returning strings. Named property access
 such as `storage.theme` is unsupported; use `getItem('theme')` and `setItem('theme', value)`.
-Existing raw storage values require [explicit migration](/guides/caveats), and `clear()` only removes
+Existing raw storage values require [explicit migration](/guides/migration), and `clear()` only removes
 recognized entries within the configured namespace.
 
 Create and reuse a namespaced instance for application state:
@@ -118,10 +118,10 @@ Backend access failures, failed expiration cleanup, and thrown schema errors pro
 
 Options:
 
-| Option   | Type             | Description                                                                                                                                |
-| -------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `schema` | `StandardSchema` | Validate the value during read. Async schemas are not supported                                                                            |
-| `legacy` | `LegacyOptions`  | Import a legacy key when the destination is physically missing; see [importing existing values](/guides/caveats#importing-existing-values) |
+| Option   | Type             | Description                                                                                                                                  |
+| -------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema` | `StandardSchema` | Validate the value during read. Async schemas are not supported                                                                              |
+| `legacy` | `LegacyOptions`  | Import a legacy key when the destination is physically missing; see [importing existing values](/guides/migration#importing-existing-values) |
 
 Use a schema to validate the persisted value and infer its type:
 
@@ -137,7 +137,7 @@ With `legacy: { key, deserialize }`, a missing destination triggers a one-time i
 an exact key in the same backend. The synchronous decoder receives the raw string. A successful
 import stores the schema output (or decoded value) without expiration, removes the source,
 and notifies subscribers. This opted-in read can write and throw on write or cleanup failures.
-See [importing existing values](/guides/caveats#importing-existing-values) for examples and failure behavior.
+See [importing existing values](/guides/migration#importing-existing-values) for examples and failure behavior.
 
 ### `getItemResult()`
 
