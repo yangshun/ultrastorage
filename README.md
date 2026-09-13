@@ -2,6 +2,10 @@
 
 Adds rich-value serialization, expiration, namespacing, and schema validation to `localStorage`.
 
+**[Get started at ultrastorage.dev](https://ultrastorage.dev/getting-started)** for setup instructions, guides, and examples.
+
+[Documentation](https://ultrastorage.dev) · [API reference](https://ultrastorage.dev/reference/storage) · [React guide](https://ultrastorage.dev/guides/react)
+
 ## Features
 
 - **Store anything**: Stores `Set`, `Map`, `Date`, `RegExp`, `BigInt`, circular references, and more using [devalue](https://github.com/sveltejs/devalue)
@@ -9,7 +13,7 @@ Adds rich-value serialization, expiration, namespacing, and schema validation to
 - **Namespacing**: Group related keys with a `prefix` and scope operations such as `clear()` to that namespace
 - **Array keys**: Build structural keys from ordered string segments without separator collisions
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
-- **React hooks**: Optional [`ultrastorage/react` adapter](docs/guides/react.mdx) with typed values, functional updates, and server rendering
+- **React hooks**: Optional [`ultrastorage/react` adapter](https://ultrastorage.dev/guides/react) with typed values, functional updates, and server rendering
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
 - **Choose where values are saved**: Use `localStorage`, `sessionStorage`, any object that implements `Storage`, or the included in-memory implementation
 - **ESM and CJS**: Tree-shakeable dual builds with full TypeScript types
@@ -21,7 +25,7 @@ npm install ultrastorage
 ```
 
 ultrastorage was previously published as `greatstorage`. Existing users can follow the
-[migration guide](docs/guides/migration.md#from-greatstorage).
+[migration guide](https://ultrastorage.dev/guides/migration#from-greatstorage).
 
 ## How it works
 
@@ -29,9 +33,11 @@ Internally, every value is stored as an object rather than being written to the 
 
 New writes use `__us`; existing entries marked with `__gs` remain fully supported without migration.
 
-Refer to the [documentation](docs/resources/how-it-works.md) for more explanation regarding internals and design decisions.
+Refer to the [documentation](https://ultrastorage.dev/resources/how-it-works) for more explanation regarding internals and design decisions.
 
 ## Usage
+
+The examples below cover the basics. Follow the [getting started guide](https://ultrastorage.dev/getting-started) for a walkthrough, or browse the [documentation](https://ultrastorage.dev) for detailed guides.
 
 ### Basic
 
@@ -265,7 +271,7 @@ Read, update, and write a value in one call.
 appStorage.updateItem('count', (current) => (current ?? 0) + 1);
 ```
 
-See the [documentation](docs/index.md) for the full API reference, React integration, and caveats.
+See the [documentation](https://ultrastorage.dev) for the full API reference, React integration, and caveats.
 
 ## See also
 
@@ -277,8 +283,8 @@ See the [documentation](docs/index.md) for the full API reference, React integra
 
 ## Development
 
-See the [roadmap](ROADMAP.md) for planned features, the [API reference](docs/reference/storage.md)
-for current behavior, and [how it works](docs/resources/how-it-works.md) for design explanations.
+See the [roadmap](ROADMAP.md) for planned features, the [API reference](https://ultrastorage.dev/reference/storage)
+for current behavior, and [how it works](https://ultrastorage.dev/resources/how-it-works) for design explanations.
 
 This project uses [Vite+](https://viteplus.dev/guide/) with the Node.js version in
 `.node-version` and the package manager declared in `package.json`.
