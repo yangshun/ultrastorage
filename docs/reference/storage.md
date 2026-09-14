@@ -13,12 +13,13 @@ createStorage(options?: CreateStorageOptions): UltraStorage;
 
 All options are optional.
 
-| Option       | Type         | Default        | Description                                                |
-| ------------ | ------------ | -------------- | ---------------------------------------------------------- |
-| `prefix`     | `string`     | None           | Key prefix for namespacing                                 |
-| `separator`  | `string`     | `":"`          | Advanced override for the separator between prefix and key |
-| `storage`    | `Storage`    | `localStorage` | Where values are saved                                     |
-| `serializer` | `Serializer` | `devalue`      | Custom serializer with `stringify` and `parse` methods     |
+| Option            | Type              | Default        | Description                                                                 |
+| ----------------- | ----------------- | -------------- | --------------------------------------------------------------------------- |
+| `prefix`          | `string`          | None           | Key prefix for namespacing                                                  |
+| `separator`       | `string`          | `":"`          | Advanced override for the separator between prefix and key                  |
+| `storage`         | `Storage`         | `localStorage` | Where values are saved                                                      |
+| `serializer`      | `Serializer`      | `devalue`      | Custom serializer with `stringify` and `parse` methods                      |
+| `onQuotaExceeded` | `'clear-expired'` | Disabled       | Clear expired entries in this namespace and retry a failed quota write once |
 
 Keep the default `:` separator unless you need to match an existing stored-key convention; see
 [custom separators](/guides/namespaces#custom-separators). Changing `prefix` or `separator` after
@@ -549,7 +550,7 @@ for (const key of appStorage.keys()) {
 ## Error handling
 
 Storage operations are synchronous and remain subject to backend access restrictions and storage
-quotas. Backend exceptions, serialization errors on writes, factory or updater exceptions, and
+quotas. By default, backend exceptions, serialization errors on writes, factory or updater exceptions, and
 thrown schema errors propagate to the caller. Async schemas throw a `TypeError`.
 
 Even a read can fail: `getItem()` removes expired entries, so a backend removal error is thrown
@@ -560,6 +561,42 @@ Handle failures where you call the API; ultrastorage does not silently substitut
 backend. Bulk clearing can partially complete before a backend error, with no rollback. Completed
 removals still notify subscribers. Subscriber exceptions are handled separately and do not turn a
 completed write into a failure; see [event delivery](/guides/subscriptions#events-and-delivery).
+
+### Recovering from quota failures
+
+For caches with expiring data, opt in to cleanup and one retry:
+
+```ts lib/cache.ts
+import { createStorage } from 'ultrastorage';
+
+export const cache = createStorage({
+  prefix: 'cache',
+  onQuotaExceeded: 'clear-expired',
+});
+
+try {
+  cache.setItem('results', { items: ['first', 'second'] }, { ttl: 60_000 });
+} catch (error) {
+  // Cleanup or the retry can still fail. Handle the unsaved value in your app.
+  console.error('Could not save cached results', error);
+}
+```
+
+Only an error named `QuotaExceededError` from the backend's `setItem()` triggers recovery.
+ultrastorage calls `clearExpired()` in the current namespace, then retries the same serialized
+write once, even if no expired entries were found. Serialization, factories, and updaters do not
+run again, and the write's expiration deadline stays unchanged. This applies to `setItem()`,
+helper writes, `setExpiration()`, legacy imports, and React setters, including the core entry point.
+
+Cleanup follows the usual [namespace boundaries](/guides/namespaces) and skips live, foreign,
+corrupted, and unsupported entries. Without a prefix, recognized expired entries across the backend
+are eligible. Successful first writes do not trigger cleanup. There is no oldest-entry eviction
+or automatic memory fallback, and an object that is too large can still fail after cleanup.
+
+If cleanup fails, its error propagates and no retry occurs. If the retry fails, its error propagates.
+Completed removals are not rolled back. Cleanup emits `expire` events, and a successful changed
+write emits `set`; listeners run after recovery finishes, including when it throws. No `set` event
+is emitted for a failed write.
 
 ## `createMemoryStorage()`
 

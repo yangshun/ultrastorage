@@ -45,6 +45,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   const separator = options.separator ?? ':';
   const prefix = options.prefix ? options.prefix + separator : '';
   const serializer = options.serializer;
+  const onQuotaExceeded = options.onQuotaExceeded;
 
   if (!isProduction && options.prefix && separator && options.prefix.includes(separator)) {
     const warningKey = `prefix:${JSON.stringify([options.prefix, separator])}`;
@@ -190,10 +191,27 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     const raw = serializer.stringify(entry);
     const observed = hasSubscribers(getBackend(), rawKey);
     const previous = observed ? getBackend().getItem(rawKey) : null;
-    getBackend().setItem(rawKey, raw);
-    if (observed && previous !== raw) {
-      notify(getBackend(), rawKey, 'set');
-    }
+    // Keep cleanup listeners from writing again before the retry has finished.
+    batchNotifications(() => {
+      try {
+        getBackend().setItem(rawKey, raw);
+      } catch (error) {
+        if (
+          onQuotaExceeded !== 'clear-expired' ||
+          typeof error !== 'object' ||
+          error === null ||
+          !('name' in error) ||
+          error.name !== 'QuotaExceededError'
+        ) {
+          throw error;
+        }
+        clearExpired();
+        getBackend().setItem(rawKey, raw);
+      }
+      if (observed && previous !== raw) {
+        notify(getBackend(), rawKey, 'set');
+      }
+    });
   }
 
   function getExpiration(key: StorageKey): StorageExpiration | null {

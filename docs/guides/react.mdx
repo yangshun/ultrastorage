@@ -235,8 +235,11 @@ Provide matching defaults on the server and client; there is no automatic server
 Only instance construction is safe without access to `localStorage` or another configured `Storage`
 object: calling ordinary storage methods still requires one to be available.
 
-Storage access, quota, serialization-on-write, updater, and thrown schema errors propagate. Async
-schemas throw.
+Storage access, serialization-on-write, updater, and thrown schema errors propagate. Async schemas
+throw. Quota failures also propagate unless the instance's opt-in
+[quota recovery](/reference/storage#recovering-from-quota-failures) succeeds. Configure
+`onQuotaExceeded: 'clear-expired'` on `createStorage()` to clear expired entries and retry once;
+the hook setter's updater runs only once.
 
 Validation failures reported as schema issues use the fallback. There is no optimistic update or
 silent fallback to memory after a failed write or inaccessible browser storage.

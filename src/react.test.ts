@@ -512,6 +512,35 @@ describe('React storage hooks', () => {
     expect(hook.result.current[0]).toBe(1);
   });
 
+  it('updates after quota recovery and preserves the displayed value if the retry fails', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const backend = createMemoryStorage();
+    const storage = createStorage({ storage: backend, onQuotaExceeded: 'clear-expired' });
+    storage.setItem('old', 0, { ttl: 10 });
+    storage.setItem('n', 1);
+    vi.setSystemTime(1011);
+    const hook = renderHook(() => useStorage<number>(storage, 'n'));
+    const error = new DOMException('Storage is full', 'QuotaExceededError');
+    const write = vi.spyOn(backend, 'setItem').mockImplementationOnce(() => {
+      throw error;
+    });
+    const updater = vi.fn((value: number | null) => value! + 1);
+    act(() => hook.result.current[1](updater));
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(updater).toHaveBeenCalledTimes(1);
+    expect(hook.result.current[0]).toBe(2);
+    expect(backend.getItem('old')).toBeNull();
+
+    write.mockClear().mockImplementation(() => {
+      throw error;
+    });
+    expect(() => hook.result.current[1](3)).toThrow(error);
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(hook.result.current[0]).toBe(2);
+    expect(storage.getItem('n')).toBe(2);
+  });
+
   it('rejects unsupported instances, async schemas, and read/validation errors', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => renderHook(() => useStorage({} as UltraStorage, 'n'))).toThrow(

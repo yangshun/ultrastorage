@@ -12,7 +12,7 @@ formats or libraries, see the separate [migration guide](/guides/migration).
 
 - **Namespaces can overlap**: A broad prefix includes matching nested prefixes, while an unprefixed instance can clear recognized entries across the backend; choose [non-overlapping prefixes](/guides/namespaces).
 - **Namespace changes need migration**: Changing `prefix` or `separator` does not rename existing entries and can make them inaccessible through the new configuration; keep [namespace settings](/guides/namespaces) stable or migrate the data explicitly.
-- **Reads and writes can throw**: Synchronous backend access, quota, serialization, and thrown schema errors propagate without a memory fallback; even expiration cleanup during a read can fail ([error handling](/reference/storage#error-handling)).
+- **Reads and writes can throw**: Synchronous backend access, quota, serialization, and thrown schema errors propagate without a memory fallback; even expiration cleanup during a read can fail. Opt in to [quota recovery](/reference/storage#recovering-from-quota-failures) to clear expired entries and retry a quota write once.
 - **Clearing skips unreadable entries**: Corrupted or unsupported envelopes can remain in storage after `clear()` and require [explicit migration or removal](/reference/storage#clear).
 - **Changing serializers can strand data**: JSON fallback runs only when the configured parser throws, so use a new prefix and plan [format migration](/guides/destinations#custom-serialization).
 - **Rich values have limits**: Functions, promises, symbols, and arbitrary class instances are rejected by default, while custom serializers may lose other values ([serialization limits](/guides/destinations#custom-serialization)).

@@ -231,6 +231,13 @@ export interface CreateStorageOptions {
   storage?: Storage;
 
   /**
+   * On a backend QuotaExceededError, clear recognized expired entries in this
+   * namespace and retry the same serialized write once. Disabled by default.
+   * Cleanup and retry failures propagate; completed removals are not rolled back.
+   */
+  onQuotaExceeded?: 'clear-expired';
+
+  /**
    * Custom serializer with `stringify` and `parse` methods.
    * Defaults to `devalue`.
    */
