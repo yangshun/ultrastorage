@@ -1,5 +1,5 @@
-export { createStorage } from './core';
-export { createMemoryStorage } from './memory-storage';
+export { createStorage } from './core/create-storage';
+export { createMemoryStorage } from './core/memory-storage';
 export type {
   CoreStorageOptions,
   CreateStorageOptions,
@@ -16,4 +16,4 @@ export type {
   StorageListener,
   StorageOptions,
   SubscribeOptions,
-} from './types';
+} from './core/types';

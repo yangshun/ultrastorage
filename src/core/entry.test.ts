@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { createMemoryStorage, createStorage } from './index';
+import { createMemoryStorage, createStorage } from '../index';
 import type { UltraStorage } from './types';
 
 describe('schema result boundaries', () => {

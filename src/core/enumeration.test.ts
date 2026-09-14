@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { parse, stringify } from 'devalue';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
 
 afterEach(() => {
   vi.restoreAllMocks();

@@ -6,7 +6,11 @@ export default defineConfig({
   },
   pack: {
     deps: { resolveDepSubpath: true, neverBundle: ['react'] },
-    entry: ['src/index.ts', 'src/core-entry.ts', 'src/react.ts'],
+    entry: {
+      index: 'src/index.ts',
+      'core-entry': 'src/core-entry.ts',
+      react: 'src/react/index.ts',
+    },
     format: ['cjs', 'esm'],
     dts: true,
     clean: true,
@@ -15,7 +19,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/types.ts'],
+      exclude: ['src/**/*.test.ts', 'src/core/types.ts'],
       reporter: ['text', 'html', 'json', 'json-summary'],
       skipFull: false,
       thresholds: { 100: true, perFile: true },

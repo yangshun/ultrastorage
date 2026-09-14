@@ -1,5 +1,5 @@
 import { describe, it, expect, expectTypeOf, vi, beforeEach } from 'vite-plus/test';
-import { createStorage, createMemoryStorage } from './index';
+import { createStorage, createMemoryStorage } from '../index';
 import type { StorageKey, UltraStorage } from './types';
 
 describe('ultrastorage', () => {
@@ -899,7 +899,7 @@ describe('ultrastorage', () => {
     });
 
     it('deduplicates prefix warnings across instances and entry points', async () => {
-      const { createStorage: createStorageCore } = await import('./core-entry');
+      const { createStorage: createStorageCore } = await import('../core-entry');
       const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const prefix = 'warn-dedup:admin';
       createStorage({ prefix });

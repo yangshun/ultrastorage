@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
 import type { StorageChange, UltraStorage } from './types';
 
 describe('quota recovery', () => {

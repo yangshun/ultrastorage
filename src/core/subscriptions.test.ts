@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
-import type { StorageChange, StorageListener } from './core-entry';
-import type { UltraStorage, StorageChange as DefaultStorageChange, StorageKey } from './index';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
+import type { StorageChange, StorageListener } from '../core-entry';
+import type { UltraStorage, StorageChange as DefaultStorageChange, StorageKey } from '../index';
 
 describe('subscriptions', () => {
   let backend: Storage;

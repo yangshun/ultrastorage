@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
-import { createMemoryStorage, createStorage } from './index';
-import { useStorage } from './react';
+import { createMemoryStorage, createStorage } from '../index';
+import { useStorage } from './index';
 
 afterEach(() => vi.unstubAllGlobals());
 

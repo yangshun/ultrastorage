@@ -1,8 +1,8 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
-import type { StorageReadResult } from './core-entry';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
+import type { StorageReadResult } from '../core-entry';
 
 const schema = (
   validate: StandardSchemaV1<unknown, number>['~standard']['validate'],

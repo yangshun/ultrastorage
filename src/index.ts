@@ -1,6 +1,6 @@
 import { stringify, parse } from 'devalue';
-import { createStorage as createStorageCore } from './core';
-import type { CreateStorageOptions, UltraStorage } from './types';
+import { createStorage as createStorageCore } from './core/create-storage';
+import type { CreateStorageOptions, UltraStorage } from './core/types';
 
 // Re-export everything from core-entry. The explicit createStorage below
 // takes precedence over the one from the wildcard, so the rest of the

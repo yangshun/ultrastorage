@@ -1,8 +1,8 @@
 import { parse } from 'devalue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
-import type { ExpirationOptions } from './index';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
+import type { ExpirationOptions } from '../index';
 
 describe('expiration controls', () => {
   const now = 10_000;

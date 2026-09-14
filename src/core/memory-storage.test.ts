@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { createStorage } from './core-entry';
+import { createStorage } from '../core-entry';
 import { createMemoryStorage } from './memory-storage';
 
 describe('memory storage', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vite-plus/test';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
 
 function setup() {
   const backend = createMemoryStorage();

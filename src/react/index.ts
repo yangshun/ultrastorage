@@ -9,10 +9,10 @@ import {
   useSyncExternalStore,
 } from 'react';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { validateEntry } from './entry';
-import { serializeStorageKey } from './keys';
-import { createSnapshotReader } from './snapshots';
-import type { UltraStorage, StorageKey, StorageOptions } from './types';
+import { validateEntry } from '../core/entry';
+import { serializeStorageKey } from '../core/keys';
+import { createSnapshotReader } from '../core/snapshots';
+import type { UltraStorage, StorageKey, StorageOptions } from '../core/types';
 
 export interface UseStorageOptions<T> {
   /** Update when the entry expires without deleting it. Defaults to false. */

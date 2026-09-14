@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
-import type { SubscribeOptions as CoreSubscribeOptions } from './core-entry';
-import type { SubscribeOptions, UltraStorage, StorageKey } from './index';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
+import type { SubscribeOptions as CoreSubscribeOptions } from '../core-entry';
+import type { SubscribeOptions, UltraStorage, StorageKey } from '../index';
 
 const cleanups: (() => void)[] = [];
 function watch(storage: UltraStorage, key: StorageKey = 'key', listener = vi.fn()) {

@@ -12,10 +12,10 @@ import {
 import { renderToString } from 'react-dom/server';
 import { hydrateRoot } from 'react-dom/client';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { createMemoryStorage, createStorage } from './index';
-import { createStorage as createCoreStorage } from './core-entry';
-import type { UltraStorage } from './types';
-import { createStorageHook, useStorage } from './react';
+import { createMemoryStorage, createStorage } from '../index';
+import { createStorage as createCoreStorage } from '../core-entry';
+import type { UltraStorage } from '../core/types';
+import { createStorageHook, useStorage } from './index';
 
 const numberSchema: StandardSchemaV1<unknown, number> = {
   '~standard': {
