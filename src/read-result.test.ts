@@ -144,3 +144,50 @@ describe('getItemResult', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 });
+
+describe('async parser contract', () => {
+  it('rejects a resolved async parser with a synchronous TypeError', async () => {
+    const backend = createMemoryStorage();
+    backend.setItem('key', 'encoded');
+    const storage = createCoreStorage({
+      storage: backend,
+      serializer: {
+        stringify: JSON.stringify,
+        parse: async () => ({ __us: true, version: 1, value: 'decoded', expiry: null }),
+      },
+    });
+    expect(() => storage.getItemResult('key')).toThrow('Serializer parse must be synchronous');
+    expect(backend.getItem('key')).toBe('encoded');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  it('rejects a rejected async parser and consumes the rejection', async () => {
+    const backend = createMemoryStorage();
+    backend.setItem('key', 'encoded');
+    const storage = createCoreStorage({
+      storage: backend,
+      serializer: {
+        stringify: JSON.stringify,
+        parse: () => Promise.reject(new Error('decode failed')),
+      },
+    });
+    expect(() => storage.getItemResult('key')).toThrow('Serializer parse must be synchronous');
+    expect(backend.getItem('key')).toBe('encoded');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  it('keeps JSON fallback for synchronous parser exceptions', () => {
+    const backend = createMemoryStorage();
+    backend.setItem('key', JSON.stringify({ __us: true, version: 1, value: 1, expiry: null }));
+    const storage = createCoreStorage({
+      storage: backend,
+      serializer: {
+        stringify: JSON.stringify,
+        parse: () => {
+          throw new Error('Cannot decode');
+        },
+      },
+    });
+    expect(storage.getItemResult('key')).toEqual({ status: 'success', value: 1 });
+  });
+});

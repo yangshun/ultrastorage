@@ -46,6 +46,11 @@ export function decodeEntryResult(raw: string | null, serializer: Serializer): D
       return { status: 'parse-error', error };
     }
   }
+  if (isPromiseLike(entry)) {
+    // Parsing has already started; consume any rejection before rejecting async parsers.
+    void Promise.resolve(entry).catch(() => {});
+    throw new TypeError('Serializer parse must be synchronous. Async parsers are not supported.');
+  }
   return isStorageEntry(entry) ? { status: 'success', value: entry } : { status: 'unsupported' };
 }
 
