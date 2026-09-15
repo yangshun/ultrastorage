@@ -79,6 +79,9 @@ A custom serializer must synchronously encode and decode the entire storage enve
 its value, marker, version, and expiration metadata. Its supported value types determine what you
 can store reliably.
 
+If `parse()` returns a promise or thenable (an object with a callable `then` method), ultrastorage
+throws a synchronous `TypeError`. This does not trigger JSON fallback.
+
 For example, plain JSON does not preserve `Map`, `Set`, or `Date` types, and drops object properties
 whose value is `undefined`. Storing `undefined` as the entry value drops the envelope's required
 `value` property:

@@ -182,7 +182,9 @@ before schema validation. Other unsuccessful outcomes preserve the stored bytes.
 The configured serializer is tried first; JSON is tried only if that parser throws.
 Valid current `__us` and legacy `__gs` envelopes are both accepted. Backend access and
 removal failures, exceptions thrown by schemas, and unsupported asynchronous validation
-still throw. These operational failures are not converted into read statuses.
+still throw. A parser that returns a promise or thenable throws a synchronous `TypeError`,
+without trying JSON fallback or returning `unsupported` or `parse-error`. These failures are
+not converted into read statuses.
 
 ### `setItem()`
 
@@ -551,11 +553,12 @@ for (const key of appStorage.keys()) {
 
 Storage operations are synchronous and remain subject to backend access restrictions and storage
 quotas. By default, backend exceptions, serialization errors on writes, factory or updater exceptions, and
-thrown schema errors propagate to the caller. Async schemas throw a `TypeError`.
+thrown schema errors propagate to the caller. Async schemas and parsers throw a synchronous
+`TypeError`.
 
 Even a read can fail: `getItem()` removes expired entries, so a backend removal error is thrown
 instead of returning `null`. In contrast, unrecognized data and schema issues return `null`, and
-parser errors follow the [JSON fallback rules](/guides/destinations#custom-serialization).
+synchronous parser errors follow the [JSON fallback rules](/guides/destinations#custom-serialization).
 
 Handle failures where you call the API; ultrastorage does not silently substitute an in-memory
 backend. Bulk clearing can partially complete before a backend error, with no rollback. Completed

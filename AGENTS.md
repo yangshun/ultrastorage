@@ -25,3 +25,9 @@ release. Add a tool name to select part of the graph. For example, run
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+## Documentation Checklist
+
+- [ ] For every code change, check the documentation and update any affected guides, API reference, examples, or contributor instructions as part of the same change. This applies to features, bug fixes, refactors, and tooling changes. Include changes to behavior, error handling, fallbacks, compatibility, setup, and development workflows.
+- [ ] During code and PR reviews, check whether the documentation describes the resulting behavior and flag missing updates.
+- [ ] After editing documentation, run `vp run docs:validate` and `vp run docs:build --isolated`.
