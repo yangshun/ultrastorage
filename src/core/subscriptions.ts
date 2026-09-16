@@ -96,6 +96,7 @@ export function subscribe(
   key: string,
   listener: StorageListener,
   expirationSerializer?: Serializer,
+  fallbackParser?: Serializer['parse'],
 ): () => void {
   let group = groups.get(storage);
   if (!group) {
@@ -141,6 +142,7 @@ export function subscribe(
       rawKey,
       subscription,
       expirationSerializer,
+      fallbackParser,
     );
     subscription.expiration.refresh();
   }
@@ -172,6 +174,7 @@ function observeExpiration(
   rawKey: string,
   subscription: Subscription,
   serializer: Serializer,
+  fallbackParser?: Serializer['parse'],
 ): { refresh: () => void; recheck: () => void; cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let previousRaw: string | null | undefined;
@@ -190,7 +193,7 @@ function observeExpiration(
     if (!subscription.active) return;
     try {
       const raw = storage.getItem(rawKey);
-      const expiry = decodeEntry(raw, serializer)?.expiry;
+      const expiry = decodeEntry(raw, serializer, fallbackParser)?.expiry;
       if (raw !== previousRaw || expiry !== previousExpiry) {
         previousRaw = raw;
         previousExpiry = expiry;

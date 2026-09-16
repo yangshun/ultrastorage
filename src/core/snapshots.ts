@@ -5,6 +5,7 @@ import type { UltraStorage, Serializer } from './types';
 interface SnapshotAccess {
   readRaw: (key: string) => string | null;
   serializer: Serializer;
+  fallbackParser?: Serializer['parse'];
 }
 
 // Private, shared by all package entry points. No framework imports or global
@@ -25,7 +26,7 @@ export function createSnapshotReader(storage: UltraStorage, key: string) {
   return (): StorageEntryEnvelope | null => {
     const raw = access.readRaw(key);
     if (raw !== previousRaw) {
-      entry = decodeEntry(raw, access.serializer);
+      entry = decodeEntry(raw, access.serializer, access.fallbackParser);
       previousRaw = raw;
     }
     // Check time even when the bytes are unchanged, but never perform cleanup.

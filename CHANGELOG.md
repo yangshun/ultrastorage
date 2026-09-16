@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- **Breaking:** Removed automatic JSON fallback after a serializer parser throws. Reads now use only the configured parser unless `fallbackParser` is explicitly provided, including when using the default `devalue` serializer.
+- Added `fallbackParser` to both `createStorage()` entry points. It runs only after a synchronous primary parser exception; if both parsers throw, `getItemResult()` retains the primary error. Promise or thenable output from either parser throws a synchronous `TypeError`.
+
+### Upgrade notes
+
+Add `fallbackParser: JSON.parse` to preserve the previous JSON compatibility behavior. Without it, JSON envelopes rejected by the configured parser remain stored but are unreadable, excluded from enumeration, and skipped by `clear()` and `clearExpired()`. Use a compatible parser to migrate them, or `removeItem(key)` to remove known obsolete entries. Writes continue to use `serializer.stringify()`.
+
 ## 0.8.0 - 2026-09-11
 
 - Added `getItem()` legacy imports with a custom deserializer and optional schema validation. Imports run only when the destination is physically missing, persist the validated value without expiration, and remove the legacy key after a successful write.

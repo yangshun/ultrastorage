@@ -13,13 +13,14 @@ createStorage(options?: CreateStorageOptions): UltraStorage;
 
 All options are optional.
 
-| Option            | Type              | Default        | Description                                                                 |
-| ----------------- | ----------------- | -------------- | --------------------------------------------------------------------------- |
-| `prefix`          | `string`          | None           | Key prefix for namespacing                                                  |
-| `separator`       | `string`          | `":"`          | Advanced override for the separator between prefix and key                  |
-| `storage`         | `Storage`         | `localStorage` | Where values are saved                                                      |
-| `serializer`      | `Serializer`      | `devalue`      | Custom serializer with `stringify` and `parse` methods                      |
-| `onQuotaExceeded` | `'clear-expired'` | Disabled       | Clear expired entries in this namespace and retry a failed quota write once |
+| Option            | Type                  | Default        | Description                                                                 |
+| ----------------- | --------------------- | -------------- | --------------------------------------------------------------------------- |
+| `prefix`          | `string`              | None           | Key prefix for namespacing                                                  |
+| `separator`       | `string`              | `":"`          | Advanced override for the separator between prefix and key                  |
+| `storage`         | `Storage`             | `localStorage` | Where values are saved                                                      |
+| `serializer`      | `Serializer`          | `devalue`      | Custom serializer with `stringify` and `parse` methods                      |
+| `fallbackParser`  | `Serializer['parse']` | Disabled       | Synchronous parser tried only after the configured parser throws            |
+| `onQuotaExceeded` | `'clear-expired'`     | Disabled       | Clear expired entries in this namespace and retry a failed quota write once |
 
 Keep the default `:` separator unless you need to match an existing stored-key convention; see
 [custom separators](/guides/namespaces#custom-separators). Changing `prefix` or `separator` after
@@ -153,14 +154,14 @@ appStorage.getItemResult<T = unknown>(key: StorageKey, options?: ReadOptions<T>)
 and output inference as `getItem()`. Legacy import is available only through `getItem()`.
 Both types are exported from `ultrastorage` and `ultrastorage/core`.
 
-| `status`           | Additional fields                           | Meaning                                                                                               |
-| ------------------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `success`          | `value: T`                                  | Read succeeded, including stored `null` or `undefined`.                                               |
-| `missing`          | None                                        | No entry exists at the key.                                                                           |
-| `expired`          | `expiresAt: number`                         | The deadline passed; the entry was removed.                                                           |
-| `unsupported`      | None                                        | Parsed data is foreign, has an unsupported version, or has an invalid envelope.                       |
-| `parse-error`      | `error: unknown`                            | Both the configured parser and JSON fallback failed; `error` is the configured parser's thrown value. |
-| `validation-error` | `issues: readonly StandardSchemaV1.Issue[]` | The schema returned validation issues.                                                                |
+| `status`           | Additional fields                           | Meaning                                                                                                                        |
+| ------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `success`          | `value: T`                                  | Read succeeded, including stored `null` or `undefined`.                                                                        |
+| `missing`          | None                                        | No entry exists at the key.                                                                                                    |
+| `expired`          | `expiresAt: number`                         | The deadline passed; the entry was removed.                                                                                    |
+| `unsupported`      | None                                        | Parsed data is foreign, has an unsupported version, or has an invalid envelope.                                                |
+| `parse-error`      | `error: unknown`                            | The configured parser threw and no fallback was supplied, or both parsers threw; `error` is the primary parser's thrown value. |
+| `validation-error` | `issues: readonly StandardSchemaV1.Issue[]` | The schema returned validation issues.                                                                                         |
 
 ```ts app.ts
 const result = appStorage.getItemResult<string | null>('theme');
@@ -179,11 +180,14 @@ and emits an `expire` notification to subscribers. At the exact deadline the ent
 still readable. A subsequent read after cleanup returns `missing`. Expiration is checked
 before schema validation. Other unsuccessful outcomes preserve the stored bytes.
 
-The configured serializer is tried first; JSON is tried only if that parser throws.
+The configured serializer is tried first. An explicit `fallbackParser` runs only if that parser
+throws synchronously; no fallback runs by default. Use `fallbackParser: JSON.parse` to retain
+compatibility with older JSON envelopes. A parser returning an invalid envelope produces
+`unsupported` without trying another parser. Fallback reads do not rewrite stored bytes.
 Valid current `__us` and legacy `__gs` envelopes are both accepted. Backend access and
 removal failures, exceptions thrown by schemas, and unsupported asynchronous validation
-still throw. A parser that returns a promise or thenable throws a synchronous `TypeError`,
-without trying JSON fallback or returning `unsupported` or `parse-error`. These failures are
+still throw. Either parser returning a promise or thenable throws a synchronous `TypeError`,
+without trying another parser or returning `unsupported` or `parse-error`. These failures are
 not converted into read statuses.
 
 ### `setItem()`
@@ -314,7 +318,7 @@ appStorage.clear(): void;
 Entries outside the namespace and values not written by `ultrastorage` are left untouched.
 
 Corrupted envelopes, unsupported format versions, and entries unreadable by the configured parser
-and its JSON fallback are also skipped. They can remain in the backend and occupy space after
+and any explicit fallback are also skipped. They can remain in the backend and occupy space after
 `clear()` or `clearExpired()`. To discard a known unreadable entry, call `removeItem(key)`; it does
 not require the value to be readable. During a format migration, use the old serializer to read
 entries you need to retain before removing them.
@@ -558,7 +562,7 @@ thrown schema errors propagate to the caller. Async schemas and parsers throw a 
 
 Even a read can fail: `getItem()` removes expired entries, so a backend removal error is thrown
 instead of returning `null`. In contrast, unrecognized data and schema issues return `null`, and
-synchronous parser errors follow the [JSON fallback rules](/guides/destinations#custom-serialization).
+synchronous parser errors follow the [explicit fallback rules](/guides/destinations#explicit-fallback-parser).
 
 Handle failures where you call the API; ultrastorage does not silently substitute an in-memory
 backend. Bulk clearing can partially complete before a backend error, with no rollback. Completed

@@ -605,7 +605,8 @@ describe('ultrastorage', () => {
       expect(storage.getItem('internal')).toBe('managed');
     });
 
-    it('uses the JSON fallback consistently across storage APIs', () => {
+    it('uses explicit JSON fallback consistently across storage APIs', () => {
+      storage = createStorage({ storage: mockStorage, fallbackParser: JSON.parse });
       const active = JSON.stringify({ __us: true, version: 1, value: 'legacy', expiry: null });
       const expired = JSON.stringify({
         __us: true,

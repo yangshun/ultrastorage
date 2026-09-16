@@ -21,6 +21,25 @@ afterEach(() => {
 });
 
 describe('reactive expiration', () => {
+  it('uses each subscriber fallback policy for the same stored JSON envelope', () => {
+    const backend = createMemoryStorage();
+    const raw = JSON.stringify({ __us: true, version: 1, value: 1, expiry: 1010 });
+    backend.setItem('key', raw);
+    const strict = createStorage({ storage: backend });
+    const compatible = createStorage({ storage: backend, fallbackParser: JSON.parse });
+    const strictListener = watch(strict);
+    const compatibleListener = watch(compatible);
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(11);
+    expect(strictListener).not.toHaveBeenCalled();
+    expect(compatibleListener).toHaveBeenCalledExactlyOnceWith({
+      key: 'key',
+      type: 'expire',
+      source: 'local',
+    });
+    expect(backend.getItem('key')).toBe(raw);
+  });
+
   it('is opt-in, respects the exact deadline, retains bytes, and allows later cleanup events', () => {
     expectTypeOf<SubscribeOptions>().toEqualTypeOf<CoreSubscribeOptions>();
     const backend = createMemoryStorage();

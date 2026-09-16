@@ -7,6 +7,37 @@ Storage migrations should operate on decoded values rather than copying raw back
 ultrastorage wraps values in a versioned envelope and, by default, serializes that envelope with
 `devalue`. The examples below preserve data by reading it through the library that wrote it.
 
+## Upgrading from automatic JSON fallback
+
+Earlier versions tried `JSON.parse()` automatically when the configured parser threw. Fallback
+is now opt-in, including when using the default `devalue` serializer. To preserve the previous
+behavior, add `fallbackParser: JSON.parse` to each instance that needs to read JSON envelopes:
+
+```ts lib/app-storage.ts
+import { createStorage } from 'ultrastorage';
+
+export const appStorage = createStorage({
+  prefix: 'app',
+  fallbackParser: JSON.parse,
+});
+```
+
+The same option works with custom serializers and `ultrastorage/core`. Keep any existing
+`serializer`, prefix, separator, and backend configuration when adding it.
+
+Without fallback, entries the primary parser rejects remain in storage. `getItemResult()` returns
+`parse-error`, `getItem()` returns `null`, and enumeration, `clear()`, and `clearExpired()` skip them.
+React hooks and reactive expiration use the same parsing policy. Read-modify-write helpers can
+replace an unreadable entry, so configure compatibility before using them on old data.
+
+Fallback reads do not rewrite the format. To migrate an entry, read it successfully through a
+compatible instance, then write its value with the new serializer while preserving any expiration
+you need. Keep compatibility enabled while older clients can still write the old format. To remove
+a known obsolete entry without decoding it, use `removeItem(key)`.
+
+Fallback parsers must return a recognized ultrastorage envelope. For ordinary JSON values or raw
+strings written outside ultrastorage, use [legacy imports](#importing-existing-values).
+
 ## Migrating to ultrastorage
 
 ### Importing existing values

@@ -35,6 +35,31 @@ afterEach(() => {
 });
 
 describe('React storage hooks', () => {
+  it('keeps snapshot parsing and reactive expiration consistent with each instance fallback', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const backend = createMemoryStorage();
+    const writer = createCoreStorage({ storage: backend, serializer: JSON });
+    const strict = createStorage({ storage: backend });
+    const compatible = createStorage({ storage: backend, fallbackParser: JSON.parse });
+    writer.setItem('role', 'admin', { expiresAt: 1010 });
+    const strictHook = renderHook(() => useStorage(strict, 'role', { reactiveExpiration: true }));
+    const compatibleHook = renderHook(() =>
+      useStorage(compatible, 'role', { reactiveExpiration: true }),
+    );
+    expect(strictHook.result.current[0]).toBeNull();
+    expect(compatibleHook.result.current[0]).toBe('admin');
+    act(() => writer.setItem('role', 'user'));
+    expect(strictHook.result.current[0]).toBeNull();
+    expect(compatibleHook.result.current[0]).toBe('user');
+    const raw = backend.getItem('role');
+    act(() => {
+      vi.advanceTimersByTime(11);
+    });
+    expect(compatibleHook.result.current[0]).toBeNull();
+    expect(backend.getItem('role')).toBe(raw);
+  });
+
   it('reactively expires to the default and cleans up when options or keys change', () => {
     vi.useFakeTimers();
     vi.setSystemTime(1000);
@@ -349,7 +374,12 @@ describe('React storage hooks', () => {
 
   it('switches keys and instances, isolating backends and prefixes', () => {
     const backend = createMemoryStorage();
-    const a = createStorage({ storage: backend, prefix: 'a', separator: '/' });
+    const a = createStorage({
+      storage: backend,
+      prefix: 'a',
+      separator: '/',
+      fallbackParser: JSON.parse,
+    });
     const peer = createCoreStorage({
       storage: backend,
       prefix: 'a',
@@ -382,7 +412,7 @@ describe('React storage hooks', () => {
   it('leaves expired entries untouched in rendering and detects unobserved backend writes', () => {
     vi.useFakeTimers({ toFake: ['Date'], now: 0 });
     const backend = createMemoryStorage();
-    const storage = createStorage({ storage: backend });
+    const storage = createStorage({ storage: backend, fallbackParser: JSON.parse });
     storage.setItem('n', { n: 1 }, { ttl: 10 });
     const remove = vi.spyOn(backend, 'removeItem');
     const hook = renderHook(() => useStorage(storage, 'n'));
@@ -403,7 +433,7 @@ describe('React storage hooks', () => {
   it.each(['__us', '__gs'])(
     'receives %s browser events including invalid data, deletions, and native clear',
     (marker) => {
-      const storage = createStorage({ prefix: 'react' });
+      const storage = createStorage({ prefix: 'react', fallbackParser: JSON.parse });
       const hook = renderHook(() => useStorage<number>(storage, 'n'));
       const external = (
         key: string | null,

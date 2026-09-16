@@ -242,6 +242,13 @@ export interface CreateStorageOptions {
    * Defaults to `devalue`.
    */
   serializer?: Serializer;
+
+  /**
+   * Synchronous parser tried only when serializer.parse throws. Disabled by default.
+   * Must decode the entire storage envelope. If both parsers throw, reads retain
+   * the primary parser's error. Use JSON.parse to read older JSON envelopes.
+   */
+  fallbackParser?: Serializer['parse'];
 }
 
 /**

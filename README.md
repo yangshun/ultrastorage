@@ -226,6 +226,9 @@ const appStorage = createStorage({
 ### Custom serializer
 
 Provide custom `stringify` and `parse` methods to use another serialization format.
+Reads use only that parser by default. To try a second synchronous parser after it throws,
+set `fallbackParser`, for example `fallbackParser: JSON.parse` for older JSON envelopes.
+See [fallback parsing and migration](https://ultrastorage.dev/guides/migration#upgrading-from-automatic-json-fallback).
 
 ```ts
 import superjson from 'superjson';

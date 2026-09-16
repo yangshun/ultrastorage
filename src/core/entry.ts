@@ -24,8 +24,9 @@ export function isStorageEntry(data: unknown): data is StorageEntryEnvelope {
 export function decodeEntry(
   raw: string | null,
   serializer: Serializer,
+  fallbackParser?: Serializer['parse'],
 ): StorageEntryEnvelope | null {
-  const result = decodeEntryResult(raw, serializer);
+  const result = decodeEntryResult(raw, serializer, fallbackParser);
   return result.status === 'success' ? result.value : null;
 }
 
@@ -34,14 +35,19 @@ type DecodedEntryResult = Exclude<
   { status: 'expired' | 'validation-error' }
 >;
 
-export function decodeEntryResult(raw: string | null, serializer: Serializer): DecodedEntryResult {
+export function decodeEntryResult(
+  raw: string | null,
+  serializer: Serializer,
+  fallbackParser?: Serializer['parse'],
+): DecodedEntryResult {
   if (raw === null) return { status: 'missing' };
   let entry: unknown;
   try {
     entry = serializer.parse(raw);
   } catch (error) {
+    if (!fallbackParser) return { status: 'parse-error', error };
     try {
-      entry = JSON.parse(raw);
+      entry = fallbackParser(raw);
     } catch {
       return { status: 'parse-error', error };
     }

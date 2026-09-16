@@ -29,17 +29,18 @@ describe('getItemResult', () => {
   ])('reports unsupported data without deleting it: %s', (raw) => {
     const backend = createMemoryStorage();
     backend.setItem('key', raw);
-    const storage = createStorage({ storage: backend });
+    const storage = createStorage({ storage: backend, serializer: JSON });
     expect(storage.getItemResult('key')).toEqual({ status: 'unsupported' });
     expect(storage.getItem('key')).toBeNull();
     expect(backend.getItem('key')).toBe(raw);
   });
 
-  it('returns the original serializer error only when JSON fallback also fails', () => {
+  it('retains the original serializer error when explicit JSON fallback also fails', () => {
     const backend = createMemoryStorage();
     const error = new Error('Cannot decode');
     const storage = createCoreStorage({
       storage: backend,
+      fallbackParser: JSON.parse,
       serializer: {
         stringify: JSON.stringify,
         parse: () => {
@@ -176,11 +177,12 @@ describe('async parser contract', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
-  it('keeps JSON fallback for synchronous parser exceptions', () => {
+  it('supports explicit JSON fallback for synchronous parser exceptions', () => {
     const backend = createMemoryStorage();
     backend.setItem('key', JSON.stringify({ __us: true, version: 1, value: 1, expiry: null }));
     const storage = createCoreStorage({
       storage: backend,
+      fallbackParser: JSON.parse,
       serializer: {
         stringify: JSON.stringify,
         parse: () => {

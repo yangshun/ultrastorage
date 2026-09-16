@@ -45,6 +45,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   const separator = options.separator ?? ':';
   const prefix = options.prefix ? options.prefix + separator : '';
   const serializer = options.serializer;
+  const fallbackParser = options.fallbackParser;
   const onQuotaExceeded = options.onQuotaExceeded;
 
   if (!isProduction && options.prefix && separator && options.prefix.includes(separator)) {
@@ -64,7 +65,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   // Decoding is shared with snapshot readers; expiration cleanup belongs only
   // to the public read path below.
   function readEntry(key: StorageKey): StorageEntryEnvelope | null {
-    return decodeEntry(getBackend().getItem(prefixedKey(key)), serializer);
+    return decodeEntry(getBackend().getItem(prefixedKey(key)), serializer, fallbackParser);
   }
 
   function getItem<T = unknown>(key: StorageKey, options?: GetOptions<T>): T | null {
@@ -90,7 +91,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     raw: string | null,
     options?: ReadOptions<T>,
   ): StorageReadResult<T> {
-    const decoded = decodeEntryResult(raw, serializer);
+    const decoded = decodeEntryResult(raw, serializer, fallbackParser);
     if (decoded.status !== 'success') return decoded;
     const entry = decoded.value;
     if (entry.expiry != null && Date.now() > entry.expiry) {
@@ -291,7 +292,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
         continue;
       }
 
-      const entry = decodeEntry(raw, serializer);
+      const entry = decodeEntry(raw, serializer, fallbackParser);
       if (entry !== null) {
         yield [key, entry];
       }
@@ -366,6 +367,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
         serializedKey,
         listener,
         options?.reactiveExpiration ? serializer : undefined,
+        fallbackParser,
       );
     },
     get length() {
@@ -395,6 +397,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   registerSnapshotAccess(api, {
     readRaw: (key) => getBackend().getItem(prefixedKey(key)),
     serializer,
+    fallbackParser,
   });
   return api;
 }
