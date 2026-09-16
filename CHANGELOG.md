@@ -2,14 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.9.0 - 2026-09-16
 
-- **Breaking:** Removed automatic JSON fallback after a serializer parser throws. Reads now use only the configured parser unless `fallbackParser` is explicitly provided, including when using the default `devalue` serializer.
+- **Breaking:** Removed automatic JSON fallback after a serializer parser throws. Reads now use only the configured parser unless `fallbackParser` is explicitly provided, including when using the default `devalue` serializer. ([#4](https://github.com/yangshun/ultrastorage/issues/4))
 - Added `fallbackParser` to both `createStorage()` entry points. It runs only after a synchronous primary parser exception; if both parsers throw, `getItemResult()` retains the primary error. Promise or thenable output from either parser throws a synchronous `TypeError`.
+- Added opt-in `onQuotaExceeded: 'clear-expired'` recovery. A backend `QuotaExceededError` triggers cleanup of recognized expired entries in the current namespace, followed by one retry of the same serialized write. Cleanup and retry failures propagate.
+- Fixed asynchronous custom parsers being silently treated as unsupported data and leaking rejected promises. Promise-like parser output now throws a synchronous `TypeError`, with any rejection consumed. ([#3](https://github.com/yangshun/ultrastorage/pull/3))
+- Reorganized internal source into core and React modules while preserving the `ultrastorage`, `ultrastorage/core`, and `ultrastorage/react` entry points.
+- Expanded migration, parser error, and quota recovery documentation, and refreshed the documentation site's branding and navigation.
 
 ### Upgrade notes
 
 Add `fallbackParser: JSON.parse` to preserve the previous JSON compatibility behavior. Without it, JSON envelopes rejected by the configured parser remain stored but are unreadable, excluded from enumeration, and skipped by `clear()` and `clearExpired()`. Use a compatible parser to migrate them, or `removeItem(key)` to remove known obsolete entries. Writes continue to use `serializer.stringify()`.
+
+```ts
+const appStorage = createStorage({
+  prefix: 'app',
+  fallbackParser: JSON.parse,
+});
+```
+
+Keep your existing serializer, prefix, separator, and backend settings when adding the fallback. React hooks and reactive expiration follow the storage instance's parsing policy. See the [migration guide](https://ultrastorage.dev/guides/migration#upgrading-from-automatic-json-fallback) for details.
+
+Custom parsers must be synchronous. A promise or thenable now throws instead of returning an `unsupported` result; changing the fallback configuration does not enable async parsing.
+
+Quota recovery is disabled by default. Enabling it does not evict live entries or fall back to memory, and a write can still fail after cleanup and the single retry.
+
+### Contributors
+
+Thanks to [@rickvian](https://github.com/rickvian) for reporting the asynchronous-parser issue ([#2](https://github.com/yangshun/ultrastorage/issues/2)), contributing the fix ([#3](https://github.com/yangshun/ultrastorage/pull/3)), and providing the reproduction and proposal for explicit fallback parsing ([#4](https://github.com/yangshun/ultrastorage/issues/4)).
 
 ## 0.8.0 - 2026-09-11
 
