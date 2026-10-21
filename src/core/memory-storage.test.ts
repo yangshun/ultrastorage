@@ -36,18 +36,18 @@ describe('memory storage', () => {
     let visited = 0;
     // oxlint-disable-next-line typescript/unbound-method -- Explicitly rebound with call below.
     const originalKeys = Map.prototype.keys;
-    const keys = vi
-      .spyOn(Map.prototype, 'keys')
-      .mockImplementation(function (this: Map<unknown, unknown>) {
-        const iterator = originalKeys.call(this);
-        const next = iterator.next.bind(iterator);
-        iterator.next = () => {
-          const result = next();
-          if (!result.done) visited++;
-          return result;
-        };
-        return iterator;
-      });
+    const keys = vi.spyOn(Map.prototype, 'keys').mockImplementation(function (
+      this: Map<unknown, unknown>,
+    ) {
+      const iterator = originalKeys.call(this);
+      const next = iterator.next.bind(iterator);
+      iterator.next = () => {
+        const result = next();
+        if (!result.done) visited++;
+        return result;
+      };
+      return iterator;
+    });
     let length: number;
     try {
       length = storage.length;

@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 # Blume generated documentation runtime
 .blume/
 .blume-verify/
+.vitest/

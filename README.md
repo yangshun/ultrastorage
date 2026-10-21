@@ -291,6 +291,12 @@ for current behavior, and [how it works](https://ultrastorage.dev/resources/how-
 
 This project uses [Vite+](https://viteplus.dev/guide/) with the Node.js version in
 `.node-version` and the package manager declared in `package.json`.
+The Node 24 pin must be at least 24.15 for jsdom 30.
+
+Vite+, its Vite alias, Vitest, and the coverage provider are versioned together in
+`pnpm-workspace.yaml`. Keep Vitest and its coverage provider aligned with the
+bundled runner reported by `vp toolchain`. The scoped Astro React plugin override
+keeps it on Blume's plugin version to satisfy their shared Oxc peer dependency.
 
 ```sh
 vp install
@@ -303,6 +309,22 @@ vp pack
 Use `vp pack` or `vp run build` to build this library, including ESM, CJS, and
 TypeScript declarations. `vp build` runs Vite's application build and expects an
 HTML entry point. Formatting, linting, and packaging options live in `vite.config.ts`.
+
+The documentation site uses Blume 2, configured in `docs/blume.config.ts`. Search uses
+an adapter from `blume/search`, machine-readable outputs use `agents`, and the
+plain `deployment: { site }` configuration produces a static site.
+
+```sh
+vp run docs:dev
+vp run docs:validate
+vp run docs:build --isolated
+vp run docs:build
+```
+
+An isolated build verifies compilation and rendering without replacing a running
+documentation dev server's generated runtime. It omits deploy artifacts such as
+`llms.txt` and the sitemap. Stop the docs dev server and use `vp run docs:build` to
+generate deployable output in `docs/dist`.
 
 ## License
 

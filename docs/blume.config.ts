@@ -1,4 +1,5 @@
 import { defineConfig } from 'blume';
+import { orama } from 'blume/search';
 
 export default defineConfig({
   title: 'ultrastorage',
@@ -52,7 +53,7 @@ export default defineConfig({
       },
     ],
   },
-  search: { provider: 'orama' },
-  ai: { llmsTxt: true },
-  deployment: { output: 'static', site: 'https://ultrastorage.dev' },
+  search: orama(),
+  agents: { llmsTxt: true },
+  deployment: { site: 'https://ultrastorage.dev' },
 });

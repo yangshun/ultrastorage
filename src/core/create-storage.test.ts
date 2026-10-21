@@ -505,6 +505,41 @@ describe('ultrastorage', () => {
   });
 
   describe('rich types', () => {
+    it('reads rich values persisted with devalue 5 without rewriting them', () => {
+      // Produced by devalue 5.9.2. Keep this fixture independent of the installed serializer.
+      const raw =
+        '[{"__us":1,"version":2,"value":3,"expiry":16},true,1,' +
+        '{"createdAt":4,"lookup":5,"flags":9,"count":12,"matcher":13,"bytes":14,"first":7,"second":7,"self":3},' +
+        '["Date","2026-09-01T00:00:00.000Z"],["Map",6,7],"theme",{"label":8},"saved",' +
+        '["Set",10,11],"dark","compact",["BigInt","42"],["RegExp","saved","gi"],' +
+        '["Uint8Array",15],["ArrayBuffer","AH//"],4102444800000]';
+      mockStorage.setItem('saved', raw);
+
+      const value = storage.getItem<{
+        createdAt: Date;
+        lookup: Map<string, { label: string }>;
+        flags: Set<string>;
+        count: bigint;
+        matcher: RegExp;
+        bytes: Uint8Array;
+        first: { label: string };
+        second: { label: string };
+        self: unknown;
+      }>('saved')!;
+
+      expect(value.createdAt).toEqual(new Date('2026-09-01T00:00:00.000Z'));
+      expect(value.flags).toEqual(new Set(['dark', 'compact']));
+      expect(value.count).toBe(42n);
+      expect(value.matcher).toEqual(/saved/gi);
+      expect(value.bytes).toEqual(new Uint8Array([0, 127, 255]));
+      expect(value.first).toEqual({ label: 'saved' });
+      expect(value.second).toBe(value.first);
+      expect(value.lookup.get('theme')).toBe(value.first);
+      expect(value.self).toBe(value);
+      expect(storage.getExpiration('saved')).toEqual({ expiresAt: 4102444800000 });
+      expect(mockStorage.getItem('saved')).toBe(raw);
+    });
+
     it('stores and retrieves a Set', () => {
       const set = new Set([1, 2, 3]);
       storage.setItem('set', set);

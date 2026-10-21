@@ -7,6 +7,11 @@ Storage migrations should operate on decoded values rather than copying raw back
 ultrastorage wraps values in a versioned envelope and, by default, serializes that envelope with
 `devalue`. The examples below preserve data by reading it through the library that wrote it.
 
+The default serializer uses devalue 6. Supported entries written with devalue 5 remain readable,
+including rich values, shared and circular references, and expiration metadata. Keep the same
+backend, prefix, and separator when upgrading; no stored-data conversion is required for this
+serializer update.
+
 ## Upgrading from automatic JSON fallback
 
 Earlier versions tried `JSON.parse()` automatically when the configured parser threw. Fallback
