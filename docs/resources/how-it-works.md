@@ -34,7 +34,8 @@ notification timers per subscription; cleanup remains lazy.
 When you call `getItem()`, expired entries are treated as missing and removed immediately. `has()`,
 `key()`, `keys()`, and `length` also treat expired entries as missing, but they do not mutate storage.
 
-Reads that need the value also perform cleanup. Bookkeeping operations remain side-effect free.
+Ordinary and detailed `getItem()` reads perform expiration cleanup. React snapshots and bookkeeping
+operations remain side-effect free.
 
 Call `clearExpired()` to remove expired entries proactively.
 
@@ -97,3 +98,7 @@ The app-owned deserializer returns `{ value, options? }`, reusing normal write e
 options. Importing validates the value, checks for newer source/destination writes, writes and
 verifies the destination, and retains the source. Source cleanup belongs to the consuming app.
 See [migration](/guides/migration#importing-existing-values) for the breaking change from `legacy`.
+
+Detailed `getItem()` reads reuse the same parsing, validation, and importing logic, then add the
+reserved `__result` marker to the returned wrapper. A verified import also adds
+`migrated: true`; ordinary destination reads do not. The wrapper is never written as the payload.

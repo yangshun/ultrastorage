@@ -24,7 +24,11 @@ describe.each([
     backend.setItem('role', raw);
     const parse = vi.fn(serializer.parse);
     const storage = create({ storage: backend, serializer: { ...serializer, parse } });
-    expect(storage.getItemResult('role')).toEqual({ status: 'parse-error', error: parseError });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'parse-error',
+      error: parseError,
+    });
     expect(parse).toHaveBeenCalledExactlyOnceWith(raw);
     expect(storage.getItem('role')).toBeNull();
     expect(backend.getItem('role')).toBe(raw);
@@ -35,14 +39,19 @@ describe.each([
     backend.setItem('role', raw);
     const fallbackParser = vi.fn(JSON.parse);
     const storage = create({ storage: backend, serializer, fallbackParser });
-    expect(storage.getItemResult('role')).toEqual({ status: 'success', value: 'admin' });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'success',
+      value: 'admin',
+    });
     expect(fallbackParser).toHaveBeenCalledExactlyOnceWith(raw);
     const issues = [{ message: 'Role rejected' }];
     expect(
-      storage.getItemResult('role', {
+      storage.getItem('role', {
+        detailed: true,
         schema: { '~standard': { version: 1, vendor: 'test', validate: () => ({ issues }) } },
       }),
-    ).toEqual({ status: 'validation-error', issues });
+    ).toEqual({ __result: true, status: 'validation-error', issues });
     expect(backend.getItem('role')).toBe(raw);
     storage.setItem('role', 'user');
     expect(backend.getItem('role')).toBe(serializer.stringify({ ...envelope, value: 'user' }));
@@ -57,12 +66,22 @@ describe.each([
       serializer: { ...serializer, parse },
       fallbackParser,
     });
-    expect(storage.getItemResult('missing')).toEqual({ status: 'missing' });
+    expect(storage.getItem('missing', { detailed: true })).toEqual({
+      __result: true,
+      status: 'missing',
+    });
     expect(parse).not.toHaveBeenCalled();
     backend.setItem('role', serializer.stringify(envelope));
-    expect(storage.getItemResult('role')).toEqual({ status: 'success', value: 'admin' });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'success',
+      value: 'admin',
+    });
     backend.setItem('role', serializer.stringify({}));
-    expect(storage.getItemResult('role')).toEqual({ status: 'unsupported' });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'unsupported',
+    });
     expect(fallbackParser).not.toHaveBeenCalled();
   });
 
@@ -71,12 +90,23 @@ describe.each([
     const fallbackParser = vi.fn((value: string) => JSON.parse(value.slice('OLD:'.length)));
     const storage = create({ storage: backend, serializer, fallbackParser });
     backend.setItem('role', `OLD:${raw}`);
-    expect(storage.getItemResult('role')).toEqual({ status: 'success', value: 'admin' });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'success',
+      value: 'admin',
+    });
     backend.setItem('role', 'broken');
-    expect(storage.getItemResult('role')).toEqual({ status: 'parse-error', error: parseError });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'parse-error',
+      error: parseError,
+    });
     expect(backend.getItem('role')).toBe('broken');
     backend.setItem('role', 'OLD:{}');
-    expect(storage.getItemResult('role')).toEqual({ status: 'unsupported' });
+    expect(storage.getItem('role', { detailed: true })).toEqual({
+      __result: true,
+      status: 'unsupported',
+    });
   });
 
   it.each([false, true])('uses the fallback policy across storage APIs: enabled=%s', (enabled) => {
@@ -132,7 +162,7 @@ describe.each([
           serializer: position === 'primary' ? { ...serializer, parse } : serializer,
           fallbackParser,
         });
-        expect(() => storage.getItemResult('role')).toThrow(TypeError);
+        expect(() => storage.getItem('role', { detailed: true })).toThrow(TypeError);
         expect(fallbackParser).toHaveBeenCalledTimes(position === 'fallback' ? 1 : 0);
         expect(backend.getItem('role')).toBe(raw);
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -146,6 +176,10 @@ it('requires explicit JSON compatibility with the default devalue serializer too
   backend.setItem('role', raw);
   const strict = createStorage({ storage: backend });
   const compatible = createStorage({ storage: backend, fallbackParser: JSON.parse });
-  expect(strict.getItemResult('role').status).toBe('parse-error');
-  expect(compatible.getItemResult('role')).toEqual({ status: 'success', value: 'admin' });
+  expect(strict.getItem('role', { detailed: true }).status).toBe('parse-error');
+  expect(compatible.getItem('role', { detailed: true })).toEqual({
+    __result: true,
+    status: 'success',
+    value: 'admin',
+  });
 });

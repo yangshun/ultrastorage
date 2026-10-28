@@ -30,7 +30,7 @@ export const appStorage = createStorage({
 The same option works with custom serializers and `ultrastorage/core`. Keep any existing
 `serializer`, prefix, separator, and backend configuration when adding it.
 
-Without fallback, entries the primary parser rejects remain in storage. `getItemResult()` returns
+Without fallback, entries the primary parser rejects remain in storage. `getItem(key, { detailed: true })` returns
 `parse-error`, `getItem()` returns `null`, and enumeration, `clear()`, and `clearExpired()` skip them.
 React hooks and reactive expiration use the same parsing policy. Read-modify-write helpers can
 replace an unreadable entry, so configure compatibility before using them on old data.
@@ -104,6 +104,29 @@ const preferences = appStorage.getItem('preferences', {
 });
 ```
 
+#### Confirm an import
+
+Use detailed mode on the same read when the app needs confirmation before verification and cleanup:
+
+```ts app.ts
+const result = appStorage.getItem('draft', {
+  detailed: true,
+  migrateFrom: {
+    key: 'old:draft',
+    deserialize: (raw) => ({ value: JSON.parse(raw) }),
+  },
+});
+
+if (result.status === 'success' && result.migrated) {
+  // Destination bytes and expiration were verified. The source is still retained.
+  // Verify app-specific data and check for newer source writes before app-owned cleanup.
+}
+```
+
+All detailed outcomes include `__result: true`. A successful read of an occupied
+destination omits `migrated`. Decoder failures and schema issues have distinct outcomes;
+contract, storage, and write errors still throw. See [detailed reads](/reference/storage#detailed-reads).
+
 #### Breaking change from legacy
 
 The `legacy` option was renamed to `migrateFrom`; old calls now throw a descriptive error.
@@ -170,7 +193,7 @@ solution cannot decode.
 
 For every key returned by `keys()`:
 
-1. Call `getItemResult()` to distinguish a successfully stored `null` from a failed read.
+1. Call `getItem(key, { detailed: true })` to distinguish a successfully stored `null` from a failed read.
 2. Read `getExpiration()` if the destination supports expiration.
 3. Convert array keys if the destination accepts only string keys.
 4. Write the decoded value to the destination and verify that it can be read back.
@@ -188,7 +211,7 @@ type Destination = {
 
 export async function migrateStorage(destination: Destination) {
   for (const key of appStorage.keys()) {
-    const result = appStorage.getItemResult(key);
+    const result = appStorage.getItem(key, { detailed: true });
     if (result.status !== 'success') continue;
 
     const expiration = appStorage.getExpiration(key);

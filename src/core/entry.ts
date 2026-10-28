@@ -1,5 +1,5 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { Serializer, StorageReadResult } from './types';
+import type { Serializer, StorageReadOutcome } from './types';
 
 export interface StorageEntryEnvelope {
   [key: string]: unknown;
@@ -31,7 +31,7 @@ export function decodeEntry(
 }
 
 type DecodedEntryResult = Exclude<
-  StorageReadResult<StorageEntryEnvelope>,
+  StorageReadOutcome<StorageEntryEnvelope>,
   { status: 'expired' | 'validation-error' }
 >;
 
@@ -80,7 +80,7 @@ export function validateValue<T>(
 export function validateValueResult<T>(
   value: unknown,
   schema?: StandardSchemaV1<unknown, T>,
-): Extract<StorageReadResult<T>, { status: 'success' | 'validation-error' }> {
+): Extract<StorageReadOutcome<T>, { status: 'success' | 'validation-error' }> {
   if (!schema) return { status: 'success', value: value as T };
   const result = schema['~standard'].validate(value);
   if (isPromiseLike(result)) {

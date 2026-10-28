@@ -104,15 +104,23 @@ subscription events also supply a reusable encoded string through `change.key`.
 Retrieves and deserializes a stored value.
 
 ```ts
-appStorage.getItem<T = unknown>(key: StorageKey): T | null;
+appStorage.getItem<T = unknown>(
+  key: StorageKey,
+  options?: GetOptions<T> & { detailed?: false },
+): T | null;
 
 appStorage.getItem<T>(
   key: StorageKey,
-  options: { schema?: StandardSchema; migrateFrom?: MigrateFromOptions },
-): T | null;
+  options: GetOptions<T> & { detailed: true },
+): StorageReadResult<T>;
+
+appStorage.getItem<T>(
+  key: StorageKey,
+  options: GetOptions<T>,
+): T | null | StorageReadResult<T>; // Dynamic boolean.
 ```
 
-Returns `null` if the key is missing, expired, or fails the supplied [schema validation](https://github.com/standard-schema/standard-schema). If the entry is expired, `getItem()` removes it from storage.
+By default, returns `null` if the key is missing, expired, or fails the supplied [schema validation](https://github.com/standard-schema/standard-schema). If the entry is expired, `getItem()` removes it from storage. Detailed mode returns the outcome described below.
 
 Foreign values, unrecognized envelopes, and entries that cannot be parsed also return `null`.
 Backend access failures, failed expiration cleanup, and thrown schema errors propagate; see
@@ -123,6 +131,7 @@ Options:
 | Option        | Type                 | Description                                                                                                                                  |
 | ------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `schema`      | `StandardSchema`     | Validate the value during read. Async schemas are not supported                                                                              |
+| `detailed`    | `boolean`            | Return a marked read outcome instead of a value or null. Defaults to false.                                                                  |
 | `migrateFrom` | `MigrateFromOptions` | Import a legacy key when the destination is physically missing; see [importing existing values](/guides/migration#importing-existing-values) |
 
 Use a schema to validate the persisted value and infer its type:
@@ -156,30 +165,14 @@ This replaces the old `legacy` option and `LegacyOptions` type. Old calls throw,
 non-wrapper return is invalid, including strings. See [importing existing values](/guides/migration#importing-existing-values)
 for breaking-change examples, errors, quota recovery, and React usage.
 
-### `getItemResult()`
+### Detailed reads
 
-Reads a value with a distinct outcome for each reason it could not be returned.
-`getItem()` keeps its existing value-or-null behavior.
-
-```ts
-appStorage.getItemResult<T = unknown>(key: StorageKey, options?: ReadOptions<T>): StorageReadResult<T>;
-```
-
-`ReadOptions` accepts a Standard Schema via `schema`, with the same synchronous validation
-and output inference as `getItem()`. Importing is available only through `getItem()`.
-Both types are exported from `ultrastorage` and `ultrastorage/core`.
-
-| `status`           | Additional fields                           | Meaning                                                                                                                        |
-| ------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `success`          | `value: T`                                  | Read succeeded, including stored `null` or `undefined`.                                                                        |
-| `missing`          | None                                        | No entry exists at the key.                                                                                                    |
-| `expired`          | `expiresAt: number`                         | The deadline passed; the entry was removed.                                                                                    |
-| `unsupported`      | None                                        | Parsed data is foreign, has an unsupported version, or has an invalid envelope.                                                |
-| `parse-error`      | `error: unknown`                            | The configured parser threw and no fallback was supplied, or both parsers threw; `error` is the primary parser's thrown value. |
-| `validation-error` | `issues: readonly StandardSchemaV1.Issue[]` | The schema returned validation issues.                                                                                         |
+Pass `{ detailed: true }` to `getItem()` to distinguish stored nullish values from unsuccessful
+reads. The ordinary call still returns a value or `null`. Both modes accept schema validation
+and `migrateFrom`.
 
 ```ts app.ts
-const result = appStorage.getItemResult<string | null>('theme');
+const result = appStorage.getItem<string | null>('theme', { detailed: true });
 
 if (result.status === 'success') {
   console.log(result.value); // A stored null is a successful read.
@@ -190,20 +183,41 @@ if (result.status === 'success') {
 }
 ```
 
-Like `getItem()`, this method removes an expired entry when `Date.now() > expiresAt`
-and emits an `expire` notification to subscribers. At the exact deadline the entry is
-still readable. A subsequent read after cleanup returns `missing`. Expiration is checked
-before schema validation. Other unsuccessful outcomes preserve the stored bytes.
+Every detailed outcome contains `__result: true`. This reserved field marks the
+wrapper; `value` holds the original payload, including objects with their own `status`, `value`,
+or marker fields. Ordinary reads never inspect or unwrap result-like payloads. The marker is a
+convention and can collide with arbitrary user data; the requested mode determines the return type.
 
-The configured serializer is tried first. An explicit `fallbackParser` runs only if that parser
-throws synchronously; no fallback runs by default. Use `fallbackParser: JSON.parse` to retain
-compatibility with older JSON envelopes. A parser returning an invalid envelope produces
-`unsupported` without trying another parser. Fallback reads do not rewrite stored bytes.
-Valid current `__us` and legacy `__gs` envelopes are both accepted. Backend access and
-removal failures, exceptions thrown by schemas, and unsupported asynchronous validation
-still throw. Either parser returning a promise or thenable throws a synchronous `TypeError`,
-without trying another parser or returning `unsupported` or `parse-error`. These failures are
-not converted into read statuses.
+| Status             | Additional fields                           | Meaning                                                                              |
+| ------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `success`          | `value: T`, optional `migrated: true`       | A decoded, validated value, including `null` or `undefined`.                         |
+| `missing`          | None                                        | No destination or importable source exists.                                          |
+| `expired`          | `expiresAt: number`                         | The deadline passed; expired destinations are removed, expired sources are retained. |
+| `unsupported`      | None                                        | Foreign data or an unsupported/invalid envelope.                                     |
+| `parse-error`      | `error: unknown`                            | Configured parsing or source deserialization failed.                                 |
+| `validation-error` | `issues: readonly StandardSchemaV1.Issue[]` | The schema returned issues.                                                          |
+
+`migrated: true` appears only after an importing read writes and verifies the destination.
+Reading an occupied destination omits it, including if a user callback populated the destination
+before import. This confirms the copied representation and expiration; app-level verification
+and source cleanup remain the caller's responsibility. The source is always retained.
+
+`StorageReadResult<T>` and `GetOptions<T>` are exported from both main and core entry points.
+TypeScript infers the result from a literal `detailed: true`; false or omitted returns `T | null`.
+A dynamic boolean produces a union of those types.
+
+Both modes remove expired destinations when `Date.now() > expiresAt` and emit `expire` events;
+at the exact timestamp the entry remains valid. Other unsuccessful outcomes retain stored bytes.
+Parsing follows the instance's primary serializer and explicit fallback policy. Backend access,
+write and cleanup failures, thrown schema errors, malformed migration contracts, and unsupported
+asynchronous callbacks still throw. Detailed mode does not catch operational exceptions.
+
+#### Breaking change from getItemResult
+
+`getItemResult()` and its `ReadOptions` type were removed. Replace calls with
+`getItem(key, { ...options, detailed: true })`, and use `GetOptions` for read options.
+The result now includes the reserved marker on every outcome and the optional migration flag on
+success. There is no separate migration method or result API.
 
 ### `setItem()`
 

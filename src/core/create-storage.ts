@@ -7,7 +7,7 @@ import type {
   CoreStorageOptions,
   ExpirationOptions,
   GetOptions,
-  ReadOptions,
+  StorageReadOutcome,
   StorageReadResult,
   UltraStorage,
   StorageChange,
@@ -62,7 +62,22 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     return decodeEntry(getBackend().getItem(prefixedKey(key)), serializer, fallbackParser);
   }
 
-  function getItem<T = unknown>(key: StorageKey, options?: GetOptions<T>): T | null {
+  function getItem<T = unknown>(
+    key: StorageKey,
+    options: GetOptions<T> & { detailed: true },
+  ): StorageReadResult<T>;
+  function getItem<T = unknown>(
+    key: StorageKey,
+    options?: GetOptions<T> & { detailed?: false },
+  ): T | null;
+  function getItem<T = unknown>(
+    key: StorageKey,
+    options: GetOptions<T>,
+  ): T | null | StorageReadResult<T>;
+  function getItem<T = unknown>(
+    key: StorageKey,
+    options?: GetOptions<T>,
+  ): T | null | StorageReadResult<T> {
     if (options && 'legacy' in options) {
       throw new TypeError(
         'The "legacy" option was renamed to "migrateFrom". deserialize must return { value, options? }.',
@@ -70,30 +85,26 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     }
     const rawKey = prefixedKey(key);
     const raw = getBackend().getItem(rawKey);
+    let result!: StorageReadOutcome<T>;
     if (raw === null && options?.migrateFrom) {
-      let result!: StorageReadResult<T>;
       batchNotifications(() => {
         result = importValue(rawKey, options);
       });
-      return result.status === 'success' ? result.value : null;
+    } else {
+      result = readResult<T>(rawKey, raw, options);
     }
-    const result = readResult<T>(rawKey, raw, options);
-    return result.status === 'success' ? result.value : null;
-  }
-
-  function getItemResult<T = unknown>(
-    key: StorageKey,
-    options?: ReadOptions<T>,
-  ): StorageReadResult<T> {
-    const rawKey = prefixedKey(key);
-    return readResult(rawKey, getBackend().getItem(rawKey), options);
+    return options?.detailed
+      ? { __result: true, ...result }
+      : result.status === 'success'
+        ? result.value
+        : null;
   }
 
   function readResult<T>(
     rawKey: string,
     raw: string | null,
-    options?: ReadOptions<T>,
-  ): StorageReadResult<T> {
+    options?: GetOptions<T>,
+  ): StorageReadOutcome<T> {
     const decoded = decodeEntryResult(raw, serializer, fallbackParser);
     if (decoded.status !== 'success') return decoded;
     const entry = decoded.value;
@@ -104,7 +115,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     return validateValueResult<T>(entry.value, options?.schema);
   }
 
-  function importValue<T>(rawKey: string, options: GetOptions<T>): StorageReadResult<T> {
+  function importValue<T>(rawKey: string, options: GetOptions<T>): StorageReadOutcome<T> {
     const migration = options.migrateFrom!;
     const source = getBackend().getItem(migration.key);
     if (source === null) return { status: 'missing' };
@@ -158,7 +169,7 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     if (stored !== raw || entry === null || entry.expiry !== expiry) {
       throw new Error('Migration destination could not be verified. Source retained.');
     }
-    return result;
+    return { ...result, migrated: true };
   }
 
   function resolveExpiry(options?: StorageOptions): number | null {
@@ -422,7 +433,6 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
       return count;
     },
     getItem,
-    getItemResult,
     getExpiration,
     setExpiration,
     setItem,

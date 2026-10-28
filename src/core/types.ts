@@ -38,6 +38,8 @@ export interface MigrateFromOptions {
 }
 
 export interface GetOptions<T = unknown> {
+  /** Return a marked read outcome instead of a value or null. Defaults to false. */
+  detailed?: boolean;
   /**
    * Import only when the destination is physically missing. Successful imports
    * persist the validated output and its expiration, retaining the source.
@@ -52,17 +54,20 @@ export interface GetOptions<T = unknown> {
   schema?: StandardSchemaV1<unknown, T>;
 }
 
-/** Options for a detailed read. Importing is available through getItem only. */
-export type ReadOptions<T = unknown> = Pick<GetOptions<T>, 'schema'>;
-
-/** A detailed read outcome. Only success carries a value, which may itself be null. */
-export type StorageReadResult<T = unknown> =
-  | { status: 'success'; value: T }
+/** @internal Unmarked outcomes shared by decoding, read validation, and React snapshots. */
+export type StorageReadOutcome<T = unknown> =
+  | { status: 'success'; value: T; migrated?: true }
   | { status: 'missing' }
   | { status: 'expired'; expiresAt: number }
   | { status: 'unsupported' }
   | { status: 'parse-error'; error: unknown }
   | { status: 'validation-error'; issues: readonly StandardSchemaV1.Issue[] };
+
+/** A detailed getItem result. Only success carries a value, which may itself be null. */
+export type StorageReadResult<T = unknown> = StorageReadOutcome<T> & {
+  /** Reserved marker identifying the result wrapper, not the stored payload. */
+  readonly __result: true;
+};
 
 /** A string key or an array of string segments serialized as one opaque key. */
 export type StorageKey = string | readonly string[];
@@ -112,20 +117,18 @@ interface UltraStorageExtensions {
   /**
    * Retrieves, deserializes, and validates a value.
    * Returns `null` if the key is missing, the entry has expired, or schema validation fails.
+   * With detailed: true, returns a marked outcome instead, including verified migration status.
    *
    * @param key - The storage key.
-   * @param options - Optional schema validation and legacy import fallback.
+   * @param options - Optional schema validation, importing, and detailed read mode.
    * Importing reads preserve expiration and retain the source after a successful write.
    */
-  getItem<T = unknown>(key: StorageKey, options: GetOptions<T>): T | null;
-  getItem<T = unknown>(key: StorageKey): T | null;
-
-  /**
-   * Reads with a discriminated outcome, including successful stored null values.
-   * Expired entries are removed and notify subscribers, as with getItem.
-   * Backend failures, thrown schema errors, and asynchronous schemas still throw.
-   */
-  getItemResult<T = unknown>(key: StorageKey, options?: ReadOptions<T>): StorageReadResult<T>;
+  getItem<T = unknown>(
+    key: StorageKey,
+    options: GetOptions<T> & { detailed: true },
+  ): StorageReadResult<T>;
+  getItem<T = unknown>(key: StorageKey, options?: GetOptions<T> & { detailed?: false }): T | null;
+  getItem<T = unknown>(key: StorageKey, options: GetOptions<T>): T | null | StorageReadResult<T>;
 
   /**
    * Serializes and stores a value, optionally with a TTL or absolute expiration time.

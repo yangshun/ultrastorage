@@ -104,7 +104,7 @@ appStorage.has('optional'); // false
 ### Explicit fallback parser
 
 Reads use only the configured parser by default, including the default `devalue` parser.
-If it throws, `getItemResult()` returns `parse-error` with that error and `getItem()` returns `null`.
+If it throws, `getItem(key, { detailed: true })` returns `parse-error` with that error and `getItem()` returns `null`.
 To support another stored format, provide a synchronous `fallbackParser`:
 
 ```ts lib/app-storage.ts

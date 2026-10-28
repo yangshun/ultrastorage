@@ -15,6 +15,7 @@ Adds rich-value serialization, expiration, namespacing, and schema validation to
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
 - **React hooks**: Optional [`ultrastorage/react` adapter](https://ultrastorage.dev/guides/react) with typed values, functional updates, and server rendering
 - **Legacy imports**: Adopt existing values through `getItem({ migrateFrom })`, preserving expiration and retaining sources for verification
+- **Detailed reads**: Use `getItem(key, { detailed: true })` for marked read outcomes and verified-import confirmation
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
 - **Choose where values are saved**: Use `localStorage`, `sessionStorage`, any object that implements `Storage`, or the included in-memory implementation
 - **ESM and CJS**: Tree-shakeable dual builds with full TypeScript types
@@ -180,18 +181,27 @@ appStorage.clearExpired(); // remove only expired entries
 Use a separate prefix and keep legacy format decoding in your app:
 
 ```ts
-const draft = appStorage.getItem('draft', {
+const result = appStorage.getItem('draft', {
+  detailed: true,
   migrateFrom: {
     key: 'legacy:draft',
     deserialize: (raw) => ({ value: JSON.parse(raw) }),
   },
 });
+
+if (result.status === 'success' && result.migrated) {
+  // The destination was written and read back. Verify app data before source cleanup.
+}
 ```
 
 The deserializer must return `{ value, options? }`, with no string shorthand. Optional `options`
 reuse `StorageOptions`; return the original `expiresAt` to preserve its deadline. Occupied
 destinations are protected, and sources remain for app-owned verification and cleanup. This is
 [a breaking change from `legacy`](https://ultrastorage.dev/guides/migration#breaking-change-from-legacy).
+
+`detailed: true` returns a `StorageReadResult` with `__result: true` on every outcome.
+Without it, `getItem()` returns the value or `null`. This replaces the removed `getItemResult()`
+method; see [detailed reads](https://ultrastorage.dev/reference/storage#detailed-reads).
 
 ### Type-safe access
 

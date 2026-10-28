@@ -6,7 +6,6 @@ export type {
   ExpirationOptions,
   GetOptions,
   MigrateFromOptions,
-  ReadOptions,
   StorageReadResult,
   UltraStorage,
   Serializer,

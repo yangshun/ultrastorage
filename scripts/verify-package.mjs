@@ -4,10 +4,26 @@ const require = createRequire(import.meta.url);
 const nodeProcess = globalThis.process;
 
 function verify(module) {
-  const storage = module.createStorage({ storage: module.createMemoryStorage() });
+  const backend = module.createMemoryStorage();
+  const storage = module.createStorage({ storage: backend, prefix: 'smoke' });
   storage.setItem('smoke-test', 'ok');
   if (storage.getItem('smoke-test') !== 'ok') {
     throw new Error('Built package failed its storage smoke test.');
+  }
+  backend.setItem('old', 'imported');
+  const result = storage.getItem('imported', {
+    detailed: true,
+    migrateFrom: { key: 'old', deserialize: (raw) => ({ value: raw }) },
+  });
+  if (
+    !result.__result ||
+    result.status !== 'success' ||
+    result.value !== 'imported' ||
+    result.migrated !== true ||
+    backend.getItem('old') !== 'imported' ||
+    'getItemResult' in storage
+  ) {
+    throw new Error('Built package failed its detailed importing read smoke test.');
   }
 }
 
