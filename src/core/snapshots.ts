@@ -1,6 +1,6 @@
-import { decodeEntry } from './entry';
+import { decodeEntryResult } from './entry';
 import type { StorageEntryEnvelope } from './entry';
-import type { UltraStorage, Serializer } from './types';
+import type { UltraStorage, Serializer, StorageReadOutcome } from './types';
 
 interface SnapshotAccess {
   readRaw: (key: string) => string | null;
@@ -16,20 +16,46 @@ export function registerSnapshotAccess(storage: UltraStorage, access: SnapshotAc
   accessors.set(storage, access);
 }
 
+/** Internal, side-effect-free detailed snapshots. Failures are cached to satisfy React's snapshot contract. */
+export type StorageSnapshotResult =
+  | StorageReadOutcome<StorageEntryEnvelope>
+  | { status: 'unavailable'; error: unknown }
+  | { status: 'read-error'; error: unknown };
+
 export function createSnapshotReader(storage: UltraStorage, key: string) {
   const access = accessors.get(storage);
-  if (!access) {
+  if (!access)
     throw new TypeError('The adapter requires a storage instance created by ultrastorage.');
-  }
   let previousRaw: string | null | undefined;
-  let entry: StorageEntryEnvelope | null = null;
-  return (): StorageEntryEnvelope | null => {
-    const raw = access.readRaw(key);
-    if (raw !== previousRaw) {
-      entry = decodeEntry(raw, access.serializer, access.fallbackParser);
-      previousRaw = raw;
+  let decoded: StorageSnapshotResult = { status: 'missing' };
+  let result: StorageSnapshotResult | undefined;
+
+  return (): StorageSnapshotResult => {
+    let raw: string | null;
+    try {
+      raw = access.readRaw(key);
+    } catch (error) {
+      if (result?.status !== 'unavailable') result = { status: 'unavailable', error };
+      return result;
     }
-    // Check time even when the bytes are unchanged, but never perform cleanup.
-    return entry !== null && entry.expiry != null && Date.now() > entry.expiry ? null : entry;
+    if (raw !== previousRaw || result?.status === 'unavailable') {
+      try {
+        decoded = decodeEntryResult(raw, access.serializer, access.fallbackParser);
+      } catch (error) {
+        decoded = { status: 'read-error', error };
+      }
+      previousRaw = raw;
+      result = undefined;
+    }
+    if (
+      decoded.status === 'success' &&
+      decoded.value.expiry !== null &&
+      Date.now() > decoded.value.expiry
+    ) {
+      if (result?.status !== 'expired')
+        result = { status: 'expired', expiresAt: decoded.value.expiry };
+      return result;
+    }
+    return (result = decoded);
   };
 }

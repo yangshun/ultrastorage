@@ -102,3 +102,9 @@ See [migration](/guides/migration#importing-existing-values) for the breaking ch
 Detailed `getItem()` reads reuse the same parsing, validation, and importing logic, then add the
 reserved `__result` marker to the returned wrapper. A verified import also adds
 `migrated: true`; ordinary destination reads do not. The wrapper is never written as the payload.
+
+React hooks use one side-effect-free snapshot reader for both ordinary calls and opt-in diagnostics.
+It caches parsed entries and repeated read failures, keeping snapshot identity stable. Diagnostic
+read results include the same `__result` marker plus SSR and unavailable/read-error outcomes.
+Mutations record their last error and rethrow it; the app controls whether to overwrite unreadable
+data. Backend recovery on a later render also reconnects failed subscription setup.

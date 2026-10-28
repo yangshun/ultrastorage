@@ -34,7 +34,9 @@ const warned = isProduction ? undefined : new Set<string>();
 export function createStorage(options: CoreStorageOptions): UltraStorage {
   let backend = options.storage;
   function getBackend(): Storage {
-    return (backend ??= localStorage);
+    const target = (backend ??= localStorage);
+    if (!target) throw new Error('Storage backend is unavailable.');
+    return target;
   }
   const separator = options.separator ?? ':';
   const prefix = options.prefix ? options.prefix + separator : '';

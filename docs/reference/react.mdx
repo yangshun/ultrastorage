@@ -158,6 +158,7 @@ unexpired deadline; `expiresAt: null` removes expiration.
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `defaultValue`       | Display-only fallback when the read returns `null`; never automatically written. An omitted or `undefined` default uses `null`. |
 | `reactiveExpiration` | Optional boolean, default `false`. Update at expiration without deleting data; timers may run late.                             |
+| `diagnostics`        | Optional boolean, default false. Add read outcomes and the last mutation error as a fourth tuple item.                          |
 | `writeOptions`       | Default write expiration. An explicit setter expiration replaces the whole default policy.                                      |
 | `schema`             | Synchronous Standard Schema validation and transformation, matching `getItem()`. Infer the value type from its output.          |
 
@@ -170,7 +171,8 @@ uses that same output type, and writes are not schema-validated.
 
 ### Return value
 
-`useStorage()` and the bound hook return a readonly `[value, setValue, removeValue]` tuple.
+`useStorage()` and the bound hook return a readonly `[value, setValue, removeValue]` tuple by default.
+`diagnostics: true` adds a fourth item without changing setter/remover behavior.
 `setValue(valueOrUpdater, storageOptions?)` accepts `ttl` or `expiresAt`, never both.
 Omitted setter expiration uses `options.writeOptions`, if supplied. Without a hook default,
 it preserves the current unexpired deadline. Pass `expiresAt: null` to remove expiration.
@@ -214,6 +216,70 @@ default `expiresAt` and setter TTL, do not conflict. Default TTL restarts only o
 that hook; reads, rerenders, and hydration never refresh expiration. Defaults belong to each hook
 call, so share the configuration when several components should use the same policy.
 
+## Diagnostics
+
+Enable diagnostics on the existing hook to receive a fourth tuple item:
+
+```tsx
+const [draft, setDraft, removeDraft, diagnostics] = useStorage(appStorage, 'draft', {
+  defaultValue: '',
+  diagnostics: true,
+});
+```
+
+The same option works with `createStorageHook()`'s returned hook. No additional hook or factory is
+required. A literal `true` infers the four-item tuple; false or omitted returns the original three.
+A dynamic boolean produces a union of those tuple types, so the fourth item can be undefined.
+
+```ts
+interface StorageDiagnostics<T> {
+  readResult: { readonly __result: true } & (
+    | StorageReadResult<T>
+    | { status: 'pending' }
+    | { status: 'unavailable'; error: unknown }
+    | { status: 'read-error'; error: unknown }
+  );
+  lastError: { operation: 'write' | 'remove'; error: unknown } | null;
+}
+```
+
+`readResult` always carries `__result: true` and preserves the exact successful value, including `null` and `undefined`. The displayed
+`value` retains the existing fallback policy, including for stored `null`. Read outcomes are:
+
+| Status             | Meaning                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `pending`          | SSR and initial hydration, before reading storage.                                         |
+| `success`          | Decoded and validated data in `value`, including nullish values.                           |
+| `missing`          | No stored entry.                                                                           |
+| `expired`          | The deadline in `expiresAt` has passed; React reads retain the bytes.                      |
+| `unsupported`      | Foreign data or an invalid/unsupported envelope.                                           |
+| `parse-error`      | Parsing failed under this instance's fallback policy; includes `error`.                    |
+| `validation-error` | The schema returned `issues`.                                                              |
+| `unavailable`      | Backend access failed; includes `error`.                                                   |
+| `read-error`       | A schema or parser contract threw, including unsupported async behavior; includes `error`. |
+
+With diagnostics enabled, thrown read failures become outcomes and the displayed value uses the
+fallback. Without diagnostics, these errors continue to propagate. All hooks require a
+factory-created storage instance and valid key.
+
+Mutations remain synchronous, return `void`, and throw on failure in both modes. Diagnostics
+record the original error in `lastError` before rethrowing it; callers still need `try/catch`.
+Failed writes do not optimistically change the displayed value. The next successful write or
+removal clears the error. Errors belong to this hook and key, not other hook consumers.
+
+Diagnostics do not block writes, validate setter input, or retain unsaved text. Functional updates
+still use the fallback for invalid data and can replace it. Draft UIs should check the read outcome
+before saving, keep edited text in component state, and handle conflicts themselves. These outcomes
+describe the current rendered read; writes are not atomic across tabs. See the
+[draft example](/guides/react#persistence-diagnostics).
+
+Backend access is retried on subsequent renders. If an unavailable backend recovers, the hook also
+reconnects its subscription. There is no polling or separate retry API. Unmounting and switching
+keys release subscriptions and timers. Setter/remover identities remain stable when toggling
+diagnostics for the same storage instance and structural key.
+
 ## Exported types
 
-The adapter exports `UseStorageOptions`, `UseStorageResult`, `StorageSetter`, and `StorageHook` types. It does not add a provider, public snapshot API, selector, or `useStorageValue` hook.
+The adapter exports `UseStorageOptions`, `UseStorageResult`, `StorageSetter`, `StorageHook`, and
+`StorageDiagnostics`. `UseStorageResult<T, Current, true>` includes diagnostics; the third parameter
+defaults to false for the original tuple type. It does not add a provider, public snapshot API, selector, or `useStorageValue` hook.

@@ -35,3 +35,17 @@ it('never reads explicit backend data during SSR and uses null without a default
   expect(renderToString(createElement(View))).toBe('<span>null</span>');
   expect(read).not.toHaveBeenCalled();
 });
+
+it('renders diagnostics without resolving unavailable server storage', () => {
+  vi.stubGlobal('localStorage', undefined);
+  const storage = createStorage();
+  function View() {
+    const [value, , , diagnostics] = useStorage(storage, 'draft', {
+      diagnostics: true,
+      defaultValue: '',
+      reactiveExpiration: true,
+    });
+    return createElement('span', null, `${diagnostics.readResult.status}:${value}`);
+  }
+  expect(renderToString(createElement(View))).toBe('<span>pending:</span>');
+});

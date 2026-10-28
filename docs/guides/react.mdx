@@ -26,11 +26,12 @@ Define a named hook such as `useAppStorage` alongside your storage instance, the
 you need that data. This keeps components using the same configured instance without passing it to
 every hook call.
 
-| Situation                                                                                                   | Recommendation                                     |
-| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Several components use a shared instance, such as application preferences.                                  | Bind it once with `createStorageHook()`.           |
-| A reusable component receives its storage instance through props or context, or switches between instances. | Call `useStorage(storage, key, options)` directly. |
-| Only one component needs a key and a named hook would add unnecessary setup.                                | Calling `useStorage()` directly is also fine.      |
+| Situation                                                                                                   | Recommendation                                          |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Several components use a shared instance, such as application preferences.                                  | Bind it once with `createStorageHook()`.                |
+| A reusable component receives its storage instance through props or context, or switches between instances. | Call `useStorage(storage, key, options)` directly.      |
+| Drafts need read diagnostics and save errors.                                                               | Enable `{ diagnostics: true }` on either existing hook. |
+| Only one component needs a key and a named hook would add unnecessary setup.                                | Calling `useStorage()` directly is also fine.           |
 
 `createStorageHook()` is a convenience wrapper around `useStorage()`: both have the same
 subscriptions, type inference, defaults, setters, and server-rendering behavior. The choice is how
@@ -129,6 +130,73 @@ setFilter('all', { expiresAt: null }); // Replace the default TTL with no expira
 A setter's explicit `ttl` or `expiresAt` replaces the entire default; specifying both at one level
 is invalid. With neither a default nor setter expiration, the existing unexpired deadline is
 preserved. Reads and rerenders never refresh deadlines.
+
+## Persistence diagnostics
+
+Enable `{ diagnostics: true }` on `useStorage()` or a bound hook for a fourth tuple item containing
+`readResult` and `lastError`. This distinguishes a missing draft from unreadable data or unavailable
+storage while retaining the existing setter/remover API and throwing behavior.
+
+Draft UIs control whether to save. Keep editor text in component state so a failed write cannot
+discard the user's input, and handle thrown save errors in the event handler:
+
+```tsx draft-editor.tsx
+'use client';
+import { useState } from 'react';
+import { useAppStorage } from './lib/app-storage';
+import { DraftSchema } from './draft-schema';
+
+export function DraftEditor({ id }: { id: string }) {
+  // Mount with key={id} when switching drafts to reset the local edit buffer.
+  const [saved, setSaved, , { readResult, lastError }] = useAppStorage(['draft', id], {
+    schema: DraftSchema, // A synchronous string schema.
+    defaultValue: '',
+    diagnostics: true,
+  });
+  const [text, setText] = useState<string | null>(null);
+  const displayed = text ?? saved;
+  const readable = ['success', 'missing', 'expired'].includes(readResult.status);
+
+  function save() {
+    if (!readable) return;
+    try {
+      setSaved(displayed);
+      setText(null);
+    } catch {
+      // lastError records the failure; keep the local edit buffer.
+    }
+  }
+
+  return (
+    <>
+      <textarea
+        value={displayed}
+        disabled={!readable}
+        onChange={(event) => setText(event.target.value)}
+      />
+      <button disabled={!readable} onClick={save}>
+        Save draft
+      </button>
+      {lastError && <p role="alert">Draft could not be saved. Your edits are still here.</p>}
+      {!readable && <p>Draft read status: {readResult.status}</p>}
+    </>
+  );
+}
+```
+
+SSR and initial hydration report `pending`, then read browser data. With diagnostics enabled,
+thrown read errors become `unavailable` or `read-error` outcomes and the displayed value uses the
+fallback. The exact successful value, including stored `null`, remains available in `readResult`.
+Rendering never writes defaults or deletes expired data.
+
+Diagnostics report what happened; they do not block writes or change functional updates' fallback
+behavior. Avoid saving a fallback over unreadable data, and account for newer writes from other
+tabs. The next successful mutation clears `lastError`. Backend reads retry on subsequent renders,
+and recovered storage reconnects subscriptions; there is no polling or separate retry API.
+
+See [diagnostic outcomes](/reference/react#diagnostics) and
+[safe migration](/guides/migration#importing-existing-values) for importing legacy drafts while
+retaining their source and original deadline.
 
 ## Use a component-supplied instance
 
@@ -252,8 +320,9 @@ Provide matching defaults on the server and client; there is no automatic server
 Only instance construction is safe without access to `localStorage` or another configured `Storage`
 object: calling ordinary storage methods still requires one to be available.
 
-Storage access, serialization-on-write, updater, and thrown schema errors propagate. Async schemas
-throw. Quota failures also propagate unless the instance's opt-in
+Without diagnostics, storage access and thrown schema errors propagate. Mutation errors always
+propagate, including serialization and updater errors. Async schemas throw unless reported as a
+read outcome by diagnostics. Quota failures also propagate unless the instance's opt-in
 [quota recovery](/reference/storage#recovering-from-quota-failures) succeeds. Configure
 `onQuotaExceeded: 'clear-expired'` on `createStorage()` to clear expired entries and retry once;
 the hook setter's updater runs only once.
@@ -263,3 +332,6 @@ silent fallback to memory after a failed write or inaccessible browser storage.
 
 Render-time errors can be handled by a React error boundary; handle setter errors in the calling
 event handler.
+
+With `{ diagnostics: true }`, read errors become outcomes and mutation errors are recorded before
+being rethrown. Use the read result to decide whether saving is appropriate for your UI.

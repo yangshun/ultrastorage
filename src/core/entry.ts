@@ -60,23 +60,6 @@ export function decodeEntryResult(
   return isStorageEntry(entry) ? { status: 'success', value: entry } : { status: 'unsupported' };
 }
 
-export function validateEntry<T>(
-  entry: StorageEntryEnvelope | null,
-  schema?: StandardSchemaV1<unknown, T>,
-): T | null {
-  if (entry === null) return null;
-  const result = validateValue(entry.value, schema);
-  return result === null ? null : result.value;
-}
-
-export function validateValue<T>(
-  value: unknown,
-  schema?: StandardSchemaV1<unknown, T>,
-): { value: T } | null {
-  const result = validateValueResult(value, schema);
-  return result.status === 'success' ? { value: result.value } : null;
-}
-
 export function validateValueResult<T>(
   value: unknown,
   schema?: StandardSchemaV1<unknown, T>,

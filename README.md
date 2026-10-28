@@ -13,7 +13,7 @@ Adds rich-value serialization, expiration, namespacing, and schema validation to
 - **Namespacing**: Group related keys with a `prefix` and scope operations such as `clear()` to that namespace
 - **Array keys**: Build structural keys from ordered string segments without separator collisions
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
-- **React hooks**: Optional [`ultrastorage/react` adapter](https://ultrastorage.dev/guides/react) with typed values, functional updates, per-key write expiration defaults, and server rendering
+- **React hooks**: Optional [`ultrastorage/react` adapter](https://ultrastorage.dev/guides/react) with typed values, functional updates, per-key write expiration defaults, opt-in persistence diagnostics, and server rendering
 - **Legacy imports**: Adopt existing values through `getItem({ migrateFrom })`, preserving expiration and retaining sources for verification
 - **Detailed reads**: Use `getItem(key, { detailed: true })` for marked read outcomes and verified-import confirmation
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)
@@ -202,6 +202,10 @@ destinations are protected, and sources remain for app-owned verification and cl
 `detailed: true` returns a `StorageReadResult` with `__result: true` on every outcome.
 Without it, `getItem()` returns the value or `null`. This replaces the removed `getItemResult()`
 method; see [detailed reads](https://ultrastorage.dev/reference/storage#detailed-reads).
+
+React hooks accept `{ diagnostics: true }` to add a fourth tuple item with a marked `readResult` and
+the last write/remove error. Setters still throw; draft UIs decide when saving is safe. See the
+[React guide](https://ultrastorage.dev/guides/react#persistence-diagnostics).
 
 ### Type-safe access
 
