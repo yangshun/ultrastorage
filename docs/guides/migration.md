@@ -47,73 +47,106 @@ strings written outside ultrastorage, use [legacy imports](#importing-existing-v
 
 ### Importing existing values
 
-Pass `legacy` to `getItem()` to adopt a value previously written directly to the same
-storage backend. The destination uses your instance's namespace; `legacy.key` is an
-exact backend key without an added prefix.
+Pass `migrateFrom` to `getItem()` to adopt an entry previously written to the same backend.
+The destination uses your instance's namespace; `migrateFrom.key` is the exact source key,
+without an added prefix. Use a new, non-overlapping prefix when changing formats.
 
-```ts app.ts
+```ts lib/app-storage.ts
 import { createStorage } from 'ultrastorage';
 
-const appStorage = createStorage({ prefix: 'app' });
+const appStorage = createStorage({ prefix: 'app-ultra-v1' });
 
-// Reads "app:theme" first. If missing, imports the raw "theme" value.
 const theme = appStorage.getItem<string>('theme', {
-  legacy: {
-    key: 'theme',
-    deserialize: (raw) => raw,
+  migrateFrom: {
+    key: 'old:theme',
+    deserialize: (raw) => ({ value: raw }),
   },
 });
 ```
 
-The required `deserialize` callback lets you decode JSON, custom formats, or reshape old data.
-Pass a synchronous Standard Schema to validate the result and infer its type:
+`deserialize` must synchronously return an object with `value` and optional `options`.
+The options reuse `StorageOptions`: `ttl` starts a lifetime at import time, `expiresAt` sets
+an absolute timestamp or `Date`, and `expiresAt: null` means no expiration. Never specify both
+`ttl` and `expiresAt`. Omitted options import without expiration.
+
+Keep format decoding in your app. For example, if an old JSON record contains `{ value, expiry }`:
+
+```ts app.ts
+const promo = appStorage.getItem('promo', {
+  migrateFrom: {
+    key: 'old:promo',
+    deserialize(raw) {
+      const old = JSON.parse(raw);
+      return {
+        value: old.value,
+        options: { expiresAt: old.expiry ?? null },
+      };
+    },
+  },
+});
+```
+
+Use the original absolute deadline to preserve remaining lifetime. Migration never adds back
+elapsed time. Already-expired data is skipped, with the original source retained. A deadline
+is still valid at the exact timestamp, matching ordinary reads.
+
+Add a synchronous Standard Schema to validate the decoded value and infer its output type:
 
 ```ts app.ts
 import { z } from 'zod';
 
 const preferences = appStorage.getItem('preferences', {
-  legacy: {
-    key: 'old-settings',
-    deserialize: (raw) => {
-      const old = JSON.parse(raw);
-      return { theme: old.darkMode ? 'dark' : 'light' };
-    },
+  migrateFrom: {
+    key: 'old:settings',
+    deserialize: (raw) => ({ value: JSON.parse(raw) }),
   },
   schema: z.object({ theme: z.enum(['dark', 'light']) }),
 });
 ```
 
-For JSON that needs no reshaping, use `deserialize: JSON.parse`. Without a schema,
-the decoder's output is not validated; a generic type argument only describes the expected type.
+#### Breaking change from legacy
+
+The `legacy` option was renamed to `migrateFrom`; old calls now throw a descriptive error.
+Rename the exported `LegacyOptions` type to `MigrateFromOptions` too. All deserializers must
+return the wrapper, including strings and JSON objects:
+
+```ts
+// Before:
+// legacy: { key: 'old', deserialize: JSON.parse }
+
+// After:
+// migrateFrom: { key: 'old', deserialize: raw => ({ value: JSON.parse(raw) }) }
+```
+
+The source is now retained after success instead of automatically deleted. After verifying the
+new data, the app can remove the exact source key with the backend's `removeItem()`. Retained
+sources can be imported again if the destination is deleted. Plan app-owned cleanup or migration
+completion tracking, and coordinate older clients that can still write the source format.
 
 #### Import behavior
 
 - Importing runs only when the destination is physically missing. Existing values win,
-  including stored `null`. Malformed, foreign, expired, or schema-invalid destination
-  entries do not trigger importing on that call. An expired entry is still removed by
-  the normal read path; a later read can import if the legacy source remains.
-- A missing legacy key returns `null`. An empty string is a value and reaches the decoder.
-  Source and destination must be different keys to import: an occupied source at the
-  destination is treated as existing data.
-- Successful imports persist the validated, transformed output using the instance's
-  serializer, with no expiration. This differs from ordinary schema reads, which return
-  transformations without saving them.
-- After writing, ultrastorage removes the legacy key. Later reads use the destination,
-  and deleting it does not bring back a successfully removed source.
-- Decoder exceptions and schema validation issues return `null` and preserve the source.
-  Async decoders and async schemas throw a `TypeError`. Thrown schema errors, serialization
-  errors, and backend failures propagate.
-- Failed writes preserve the legacy source. If source removal fails after writing,
-  the read throws but the imported destination remains; subsequent reads use it and do
-  not retry source cleanup.
-- Successful writes emit the normal `set` notification. Source removal also notifies
-  subscriptions to that exact source key. Notifications are delivered after the migration
-  attempt, including when cleanup fails after a successful write.
+  including stored `null`, malformed, foreign, expired, or schema-invalid entries. An expired
+  destination is removed by the ordinary read path; a later read can attempt importing.
+- A missing source returns `null`. Empty source strings reach the deserializer. Source and
+  destination at the same physical key cannot trigger an import.
+- The validated, transformed output is serialized with the supplied expiration. Reads of an
+  existing destination do not call the deserializer or refresh its deadline.
+- Source bytes and destination presence are checked again after user callbacks. A newer
+  destination wins; a changed source throws so the app can retry instead of copying stale data.
+- After writing, the destination is read back to verify its bytes, recognized envelope, and
+  expiration. Failed verification throws and can leave destination bytes behind for inspection.
+- Decoder exceptions and schema issues return `null`, retaining the source. Malformed wrappers,
+  invalid options, and asynchronous callbacks throw a `TypeError`. Thrown schema, serialization,
+  and backend errors propagate. Every import failure retains the source.
+- With quota recovery enabled, expired entries in the destination namespace may be cleared and
+  the write retried once. The source key is excluded from this cleanup.
+- Successful changed writes emit the ordinary `set` notification after verification. Source
+  retention emits no removal notification.
 
-Importing is synchronous and is not atomic across browser tabs. Run it in client startup
-code or an effect, before relying on the migrated value. React hooks do not perform legacy
-imports themselves, but existing subscribers update when `getItem()` imports a value.
-Avoid invoking importing reads during React rendering.
+Importing is synchronous and is not atomic across tabs. Run importing reads in browser startup,
+an effect, or an event handler, never React rendering. Hooks do not import by themselves, but
+mounted subscribers update when a `getItem()` call imports a value.
 
 ### From greatstorage
 

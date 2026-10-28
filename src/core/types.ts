@@ -26,20 +26,24 @@ export type ExpirationOptions =
   | { ttl: number; expiresAt?: never }
   | { expiresAt: Date | number; ttl?: never };
 
-export interface LegacyOptions {
+export interface MigrateFromOptions {
   /** Exact key in the same backend, without the instance prefix. */
   key: string;
-  /** Synchronously decode the legacy string. Thrown errors return null and preserve the source. */
-  deserialize: (raw: string) => unknown;
+  /**
+   * Synchronously decode the source into a value and optional write options.
+   * Always return an object, even for strings. Use expiresAt to preserve the
+   * original deadline. The source is retained after both success and failure.
+   */
+  deserialize: (raw: string) => { value: unknown; options?: StorageOptions };
 }
 
 export interface GetOptions<T = unknown> {
   /**
    * Import only when the destination is physically missing. Successful imports
-   * persist the validated output without expiration, then remove the legacy key.
+   * persist the validated output and its expiration, retaining the source.
    * Backend, serialization, and thrown schema errors propagate.
    */
-  legacy?: LegacyOptions;
+  migrateFrom?: MigrateFromOptions;
 
   /**
    * A Standard Schema to validate the retrieved value against.
@@ -48,7 +52,7 @@ export interface GetOptions<T = unknown> {
   schema?: StandardSchemaV1<unknown, T>;
 }
 
-/** Options for a detailed read. Legacy imports are available through getItem only. */
+/** Options for a detailed read. Importing is available through getItem only. */
 export type ReadOptions<T = unknown> = Pick<GetOptions<T>, 'schema'>;
 
 /** A detailed read outcome. Only success carries a value, which may itself be null. */
@@ -111,7 +115,7 @@ interface UltraStorageExtensions {
    *
    * @param key - The storage key.
    * @param options - Optional schema validation and legacy import fallback.
-   * Legacy imports write without expiration and remove the source after a successful write.
+   * Importing reads preserve expiration and retain the source after a successful write.
    */
   getItem<T = unknown>(key: StorageKey, options: GetOptions<T>): T | null;
   getItem<T = unknown>(key: StorageKey): T | null;

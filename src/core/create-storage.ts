@@ -1,10 +1,4 @@
-import {
-  decodeEntry,
-  decodeEntryResult,
-  isPromiseLike,
-  validateValue,
-  validateValueResult,
-} from './entry';
+import { decodeEntry, decodeEntryResult, isPromiseLike, validateValueResult } from './entry';
 import type { StorageEntryEnvelope } from './entry';
 import { deserializeStorageKey, serializeStorageKey } from './keys';
 import { registerSnapshotAccess } from './snapshots';
@@ -69,10 +63,19 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   function getItem<T = unknown>(key: StorageKey, options?: GetOptions<T>): T | null {
+    if (options && 'legacy' in options) {
+      throw new TypeError(
+        'The "legacy" option was renamed to "migrateFrom". deserialize must return { value, options? }.',
+      );
+    }
     const rawKey = prefixedKey(key);
     const raw = getBackend().getItem(rawKey);
-    if (raw === null && options?.legacy) {
-      return importLegacy(key, options);
+    if (raw === null && options?.migrateFrom) {
+      let result!: StorageReadResult<T>;
+      batchNotifications(() => {
+        result = importValue(rawKey, options);
+      });
+      return result.status === 'success' ? result.value : null;
     }
     const result = readResult<T>(rawKey, raw, options);
     return result.status === 'success' ? result.value : null;
@@ -101,29 +104,61 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
     return validateValueResult<T>(entry.value, options?.schema);
   }
 
-  function importLegacy<T>(key: StorageKey, options: GetOptions<T>): T | null {
-    const legacy = options.legacy!;
-    const raw = getBackend().getItem(legacy.key);
-    if (raw === null) return null;
-    let value: unknown;
+  function importValue<T>(rawKey: string, options: GetOptions<T>): StorageReadResult<T> {
+    const migration = options.migrateFrom!;
+    const source = getBackend().getItem(migration.key);
+    if (source === null) return { status: 'missing' };
+    let decoded;
     try {
-      value = legacy.deserialize(raw);
-    } catch {
-      return null;
+      decoded = migration.deserialize(source);
+    } catch (error) {
+      return { status: 'parse-error', error };
     }
-    if (isPromiseLike(value)) {
-      void Promise.resolve(value).catch(() => {});
-      throw new TypeError('Legacy deserialization must be synchronous.');
+    if (isPromiseLike(decoded)) {
+      void Promise.resolve(decoded).catch(() => {});
+      throw new TypeError('Migration deserialization must be synchronous.');
     }
-    const result = validateValue(value, options.schema);
-    if (result === null) return null;
-
-    // Deliver notifications after cleanup so subscriber reads see the completed migration.
-    batchNotifications(() => {
-      setItem(key, result.value, { expiresAt: null });
-      removeStoredItem(legacy.key, 'remove');
+    if (
+      typeof decoded !== 'object' ||
+      decoded === null ||
+      Array.isArray(decoded) ||
+      !Object.prototype.hasOwnProperty.call(decoded, 'value')
+    ) {
+      throw new TypeError('Migration deserialize must return an object with { value, options? }.');
+    }
+    if (
+      decoded.options !== undefined &&
+      (typeof decoded.options !== 'object' ||
+        decoded.options === null ||
+        Array.isArray(decoded.options))
+    ) {
+      throw new TypeError('Migration options must be a StorageOptions object.');
+    }
+    const expiry = resolveExpiry(decoded.options);
+    if (expiry !== null && Date.now() > expiry) return { status: 'expired', expiresAt: expiry };
+    const result = validateValueResult(decoded.value, options.schema);
+    if (result.status !== 'success') return result;
+    const raw = serializer.stringify({
+      [ENTRY_MARKER]: true,
+      version: 1,
+      value: result.value,
+      expiry,
     });
-    return result.value;
+
+    // User callbacks may reenter storage. Existing destinations and newer sources win.
+    const existing = getBackend().getItem(rawKey);
+    if (existing !== null) return readResult(rawKey, existing, options);
+    if (getBackend().getItem(migration.key) !== source) {
+      throw new Error('Migration source changed before import. Retry the read.');
+    }
+    if (expiry !== null && Date.now() > expiry) return { status: 'expired', expiresAt: expiry };
+    writeRaw(rawKey, raw, migration.key);
+    const stored = getBackend().getItem(rawKey);
+    const entry = decodeEntry(stored, serializer, fallbackParser);
+    if (stored !== raw || entry === null || entry.expiry !== expiry) {
+      throw new Error('Migration destination could not be verified. Source retained.');
+    }
+    return result;
   }
 
   function resolveExpiry(options?: StorageOptions): number | null {
@@ -190,6 +225,10 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
 
   function writeEntry(rawKey: string, entry: StorageEntryEnvelope): void {
     const raw = serializer.stringify(entry);
+    writeRaw(rawKey, raw);
+  }
+
+  function writeRaw(rawKey: string, raw: string, protectedKey?: string): void {
     const observed = hasSubscribers(getBackend(), rawKey);
     const previous = observed ? getBackend().getItem(rawKey) : null;
     // Keep cleanup listeners from writing again before the retry has finished.
@@ -206,7 +245,10 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
         ) {
           throw error;
         }
-        clearExpired();
+        removeEntries(
+          (entry, key) => key !== protectedKey && entry.expiry != null && Date.now() > entry.expiry,
+          'expire',
+        );
         getBackend().setItem(rawKey, raw);
       }
       if (observed && previous !== raw) {
@@ -300,13 +342,13 @@ export function createStorage(options: CoreStorageOptions): UltraStorage {
   }
 
   function removeEntries(
-    predicate: (entry: StorageEntryEnvelope) => boolean,
+    predicate: (entry: StorageEntryEnvelope, rawKey: string) => boolean,
     type: 'remove' | 'expire',
   ): void {
     const keysToRemove: string[] = [];
 
     for (const [key, entry] of entries()) {
-      if (predicate(entry)) {
+      if (predicate(entry, key)) {
         keysToRemove.push(key);
       }
     }

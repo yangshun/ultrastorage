@@ -89,3 +89,11 @@ The registry and snapshot bridge are shared across the main, core, and React ent
 each module format. Separate package copies and mixed ESM/CJS runtimes do not share this state.
 React remains an optional dependency, and the main and core entry points do not import React or
 its types.
+
+## Importing existing entries
+
+An opt-in `getItem({ migrateFrom })` read imports only into a physically missing destination.
+The app-owned deserializer returns `{ value, options? }`, reusing normal write expiration
+options. Importing validates the value, checks for newer source/destination writes, writes and
+verifies the destination, and retains the source. Source cleanup belongs to the consuming app.
+See [migration](/guides/migration#importing-existing-values) for the breaking change from `legacy`.

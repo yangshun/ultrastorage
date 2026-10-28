@@ -178,11 +178,11 @@ describe('React storage hooks', () => {
     expect(backend.getItem('theme')).toBe('dark');
     act(() => {
       storage.getItem('theme', {
-        legacy: { key: 'theme', deserialize: (raw) => raw },
+        migrateFrom: { key: 'theme', deserialize: (raw) => ({ value: raw }) },
       });
     });
     expect(hook.result.current[0]).toBe('dark');
-    expect(backend.getItem('theme')).toBeNull();
+    expect(backend.getItem('theme')).toBe('dark');
   });
 
   it('binds hooks, shares updates across consumers, and keeps defaults display-only', () => {

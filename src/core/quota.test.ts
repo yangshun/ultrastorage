@@ -245,16 +245,18 @@ describe('quota recovery', () => {
       if (method === 'setExpiration')
         expect(storage.setExpiration('value', { ttl: 200 })).toBe(true);
       if (method === 'legacy')
-        expect(storage.getItem('new', { legacy: { key: 'legacy', deserialize: callback } })).toBe(
-          3,
-        );
+        expect(
+          storage.getItem('new', {
+            migrateFrom: { key: 'legacy', deserialize: () => ({ value: callback() }) },
+          }),
+        ).toBe(3);
       expect(write).toHaveBeenCalledTimes(2);
       expect(callback).toHaveBeenCalledTimes(method === 'setExpiration' ? 0 : 1);
       expect(backend.getItem('cache:old')).toBeNull();
       expect(storage.getExpiration('value')).toEqual({
         expiresAt: method === 'setExpiration' ? 1211 : 1500,
       });
-      if (method === 'legacy') expect(backend.getItem('legacy')).toBeNull();
+      if (method === 'legacy') expect(backend.getItem('legacy')).toBe('3');
     },
   );
 });

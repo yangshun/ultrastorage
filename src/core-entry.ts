@@ -5,7 +5,7 @@ export type {
   CreateStorageOptions,
   ExpirationOptions,
   GetOptions,
-  LegacyOptions,
+  MigrateFromOptions,
   ReadOptions,
   StorageReadResult,
   UltraStorage,

@@ -37,40 +37,41 @@ for unsupported values and differences when using plain JSON.
 
 ## Import an existing value
 
-Pass `legacy` to `getItem()` to import a value previously saved directly to the storage backend.
-The destination uses your instance's prefix; `legacy.key` is the exact old key.
+Pass `migrateFrom` to `getItem()` to import a value previously saved directly to the storage backend.
+The destination uses your instance's prefix; `migrateFrom.key` is the exact old key.
 
 ```ts app.ts
 const theme = appStorage.getItem<string>('theme', {
-  legacy: {
+  migrateFrom: {
     key: 'theme',
-    deserialize: (raw) => raw,
+    deserialize: (raw) => ({ value: raw }),
   },
 });
-// Reads 'acme:theme' first. If missing, imports 'theme' and removes the old key.
+// Reads 'acme:theme' first. If missing, imports 'theme' and retains the old key.
 ```
 
-The required `deserialize` callback runs synchronously. Use `JSON.parse` for JSON values, or a
+The required `deserialize` callback runs synchronously. Return `{ value: JSON.parse(raw) }` for JSON values, or use a
 custom callback to reshape old data. Add a [schema](/guides/validation) to validate its output:
 
 ```ts app.ts
 import { z } from 'zod';
 
 const preferences = appStorage.getItem('preferences', {
-  legacy: {
+  migrateFrom: {
     key: 'old-preferences',
-    deserialize: JSON.parse,
+    deserialize: (raw) => ({ value: JSON.parse(raw) }),
   },
   schema: z.object({ theme: z.enum(['light', 'dark']) }),
 });
 ```
 
 Importing only runs when the destination is physically missing. A successful import stores the
-decoded or schema-transformed value without expiration, then removes the legacy key. Decoder
-exceptions or validation issues return `null` and preserve the source; backend failures throw.
+decoded or schema-transformed value and retains the source. Return optional `options: StorageOptions`
+alongside `value` to preserve an original `expiresAt`; omitted options mean no expiration. Decoder
+exceptions or validation issues return `null`; contract, write, and backend failures throw.
 
 An importing read can write and notify subscribers. See [import behavior](/guides/migration#import-behavior)
-for existing and expired destinations, cleanup failures, and React usage.
+for existing and expired destinations, expiration, source retention, and React usage.
 
 ## Initialize a value
 

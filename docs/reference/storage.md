@@ -108,7 +108,7 @@ appStorage.getItem<T = unknown>(key: StorageKey): T | null;
 
 appStorage.getItem<T>(
   key: StorageKey,
-  options: { schema?: StandardSchema; legacy?: LegacyOptions },
+  options: { schema?: StandardSchema; migrateFrom?: MigrateFromOptions },
 ): T | null;
 ```
 
@@ -120,10 +120,10 @@ Backend access failures, failed expiration cleanup, and thrown schema errors pro
 
 Options:
 
-| Option   | Type             | Description                                                                                                                                  |
-| -------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema` | `StandardSchema` | Validate the value during read. Async schemas are not supported                                                                              |
-| `legacy` | `LegacyOptions`  | Import a legacy key when the destination is physically missing; see [importing existing values](/guides/migration#importing-existing-values) |
+| Option        | Type                 | Description                                                                                                                                  |
+| ------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`      | `StandardSchema`     | Validate the value during read. Async schemas are not supported                                                                              |
+| `migrateFrom` | `MigrateFromOptions` | Import a legacy key when the destination is physically missing; see [importing existing values](/guides/migration#importing-existing-values) |
 
 Use a schema to validate the persisted value and infer its type:
 
@@ -135,11 +135,26 @@ const theme = appStorage.getItem('theme', { schema: ThemeSchema });
 // 'light' | 'dark' | null
 ```
 
-With `legacy: { key, deserialize }`, a missing destination triggers a one-time import from
-an exact key in the same backend. The synchronous decoder receives the raw string. A successful
-import stores the schema output (or decoded value) without expiration, removes the source,
-and notifies subscribers. This opted-in read can write and throw on write or cleanup failures.
-See [importing existing values](/guides/migration#importing-existing-values) for examples and failure behavior.
+With `migrateFrom: { key, deserialize }`, a physically missing destination triggers an import
+from an exact key in the same backend. The synchronous deserializer must return:
+
+```ts
+interface MigrateFromOptions {
+  key: string;
+  deserialize: (raw: string) => { value: unknown; options?: StorageOptions };
+}
+```
+
+`value` is validated with the read schema and the transformed output is persisted. Optional
+`options` reuse the ordinary write expiration rules. Use `expiresAt` to preserve an original
+deadline; `ttl` starts a fresh lifetime at import time. Expired source values are skipped.
+Occupied destinations always win, including unreadable or expired bytes. Importing reads
+verify the written destination and retain the source after success or failure. The app owns
+verification and eventual cleanup.
+
+This replaces the old `legacy` option and `LegacyOptions` type. Old calls throw, and every
+non-wrapper return is invalid, including strings. See [importing existing values](/guides/migration#importing-existing-values)
+for breaking-change examples, errors, quota recovery, and React usage.
 
 ### `getItemResult()`
 
@@ -151,7 +166,7 @@ appStorage.getItemResult<T = unknown>(key: StorageKey, options?: ReadOptions<T>)
 ```
 
 `ReadOptions` accepts a Standard Schema via `schema`, with the same synchronous validation
-and output inference as `getItem()`. Legacy import is available only through `getItem()`.
+and output inference as `getItem()`. Importing is available only through `getItem()`.
 Both types are exported from `ultrastorage` and `ultrastorage/core`.
 
 | `status`           | Additional fields                           | Meaning                                                                                                                        |
