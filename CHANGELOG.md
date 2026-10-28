@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.10.0 - 2026-10-28
+
+This release makes imports safer, preserves legacy expiration deadlines, and adds optional persistence diagnostics and default write options to the existing React hooks.
+
+### Breaking changes
+
+- Renamed the `getItem()` option `legacy` to `migrateFrom` and the exported `LegacyOptions` type to `MigrateFromOptions`. Passing `legacy` now throws a descriptive error.
+- Import deserializers must synchronously return `{ value, options? }`. Wrap every decoded value, including strings and objects. `options` reuses `StorageOptions`: use `expiresAt` to preserve an absolute deadline or `ttl` to start a new lifetime. Omitted options import without expiration.
+- Successful imports retain the source key instead of deleting it. The application owns verification, migration completion tracking, and source cleanup.
+- Removed `getItemResult()`. Use `getItem(key, { detailed: true })` instead. The exported `ReadOptions` type was removed; use `GetOptions`.
+
+### Improvements
+
+- Detailed reads include `__result: true` and distinguish successful, missing, expired, unsupported, unparseable, and schema-invalid data. Verified imports additionally return `migrated: true`; ordinary reads still return a value or `null`.
+- Imports preserve the supplied expiration, skip expired sources, and protect every occupied destination. Validated output is written and read back before an import is reported as successful. Source data is retained on decoding, validation, serialization, backend, and write failures, including during quota recovery.
+- Added `writeOptions` to `useStorage()` and `createStorageHook()` for default expiration policies. Explicit setter expiration replaces the entire default policy; `{ expiresAt: null }` removes expiration. Reads, rerenders, and hydration never refresh deadlines.
+- Added opt-in `diagnostics: true` to the existing React hooks. A fourth tuple item exposes `readResult` and the last write or remove error, including unavailable storage and unreadable data. Setters and removers still throw, and the default three-item tuple is unchanged.
+- Improved React recovery when storage becomes available again, subscription cleanup, and side-effect-free SSR and hydration.
+- Updated the default serializer to devalue 6 and refreshed the documentation toolchain.
+
+### Upgrade notes
+
+Replace standalone detailed reads:
+
+```ts
+// Before:
+const result = appStorage.getItemResult('draft');
+
+// After:
+const result = appStorage.getItem('draft', { detailed: true });
+```
+
+Rename `legacy` to `migrateFrom` and wrap the decoded value. Keep legacy format decoding in your application. For an old JSON record containing `{ value, expiresAt }`:
+
+```ts
+const result = appStorage.getItem('draft', {
+  detailed: true,
+  migrateFrom: {
+    key: 'old:draft',
+    deserialize(raw) {
+      const old = JSON.parse(raw);
+      return {
+        value: old.value,
+        options: { expiresAt: old.expiresAt ?? null },
+      };
+    },
+  },
+});
+
+if (result.status === 'success' && result.migrated) {
+  // The destination value and expiration were written and verified.
+  // The source is still retained for application verification and cleanup.
+}
+```
+
+Use the original absolute `expiresAt` to preserve remaining lifetime. Never supply both `ttl` and `expiresAt`. Decoder exceptions and schema issues become read outcomes; malformed decoder results, invalid options, backend failures, and failed writes still throw.
+
+Use a separate namespace when changing storage formats. Retained source keys can be imported again after a destination is deleted, so coordinate older clients and perform application-owned cleanup or track migration completion. See the [migration guide](https://ultrastorage.dev/guides/migration#importing-existing-values).
+
+React diagnostics expose failures without blocking writes or retaining an unsaved editor buffer. Draft interfaces should use `readResult` to decide when saving is safe, keep unsaved text in application state, and catch setter errors. See the [React guide](https://ultrastorage.dev/guides/react).
+
 ## 0.9.0 - 2026-09-16
 
 - **Breaking:** Removed automatic JSON fallback after a serializer parser throws. Reads now use only the configured parser unless `fallbackParser` is explicitly provided, including when using the default `devalue` serializer. ([#4](https://github.com/yangshun/ultrastorage/issues/4))
