@@ -13,8 +13,11 @@ import { validateEntry } from '../core/entry';
 import { serializeStorageKey } from '../core/keys';
 import { createSnapshotReader } from '../core/snapshots';
 import type { UltraStorage, StorageKey, StorageOptions } from '../core/types';
+import { resolveWriteOptions } from './write-options';
 
 export interface UseStorageOptions<T> {
+  /** Default expiration for writes to this key. Setter expiration replaces it; reads never refresh it. */
+  writeOptions?: StorageOptions;
   /** Update when the entry expires without deleting it. Defaults to false. */
   reactiveExpiration?: boolean;
   /**
@@ -33,7 +36,7 @@ export interface UseStorageOptions<T> {
 
 /**
  * Write a replacement value or update the latest persisted value after schema
- * validation and fallback. Omitted options preserve the current unexpired deadline. Errors
+ * validation and fallback. Omitted options use writeOptions, otherwise preserve the current unexpired deadline. Errors
  * propagate, and read-modify-write updates are not atomic across tabs.
  */
 export type StorageSetter<T, Current = T | null> = (
@@ -54,6 +57,7 @@ export interface StorageHook {
     key: StorageKey,
     options: {
       reactiveExpiration?: boolean;
+      writeOptions?: StorageOptions;
       schema: StandardSchemaV1<unknown, T>;
       defaultValue: NoInfer<Exclude<T, null | undefined>>;
     },
@@ -83,6 +87,7 @@ export function useStorage<T>(
   key: StorageKey,
   options: {
     reactiveExpiration?: boolean;
+    writeOptions?: StorageOptions;
     schema: StandardSchemaV1<unknown, T>;
     defaultValue: NoInfer<Exclude<T, null | undefined>>;
   },
@@ -134,7 +139,11 @@ export function useStorage<T>(
       } else {
         updated = next;
       }
-      storage.setItem(serializedKey, updated, writeOptions);
+      storage.setItem(
+        serializedKey,
+        updated,
+        resolveWriteOptions(committed.current?.writeOptions, writeOptions),
+      );
     },
     [storage, serializedKey, read],
   );

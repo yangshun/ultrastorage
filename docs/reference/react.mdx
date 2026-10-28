@@ -158,6 +158,7 @@ unexpired deadline; `expiresAt: null` removes expiration.
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `defaultValue`       | Display-only fallback when the read returns `null`; never automatically written. An omitted or `undefined` default uses `null`. |
 | `reactiveExpiration` | Optional boolean, default `false`. Update at expiration without deleting data; timers may run late.                             |
+| `writeOptions`       | Default write expiration. An explicit setter expiration replaces the whole default policy.                                      |
 | `schema`             | Synchronous Standard Schema validation and transformation, matching `getItem()`. Infer the value type from its output.          |
 
 Missing, expired, foreign, unparseable, invalid, and stored-null values use the fallback. Valid stored
@@ -171,8 +172,9 @@ uses that same output type, and writes are not schema-validated.
 
 `useStorage()` and the bound hook return a readonly `[value, setValue, removeValue]` tuple.
 `setValue(valueOrUpdater, storageOptions?)` accepts `ttl` or `expiresAt`, never both.
-Omitted expiration options preserve the current unexpired deadline. Pass `expiresAt: null`
-to remove expiration. Missing or expired entries are written without expiration by default.
+Omitted setter expiration uses `options.writeOptions`, if supplied. Without a hook default,
+it preserves the current unexpired deadline. Pass `expiresAt: null` to remove expiration.
+Missing or expired entries are written without expiration when no policy is supplied.
 
 Functional updates read the latest persisted value, apply schema validation and the fallback, then
 write the result. They are synchronous but are not atomic across tabs. `removeValue()` removes the
@@ -188,6 +190,29 @@ Changes to hook options apply after commit; switching instances or keys switches
 Use factory-created ultrastorage instances from `ultrastorage` or `ultrastorage/core`; structural
 mocks or independently loaded package copies are not supported by the private snapshot bridge. For
 tests, wrap `createMemoryStorage()` with `createStorage()`.
+
+## Default write options
+
+Declare expiration once for this key's writes, on `useStorage()` or a bound hook:
+
+```tsx
+const [filter, setFilter] = useStorage(appStorage, 'filter', {
+  defaultValue: 'all',
+  writeOptions: { ttl: 86_400_000 },
+});
+
+setFilter('unread'); // One day from this write.
+setFilter('all', { expiresAt: null }); // Replace the default TTL with no expiration.
+```
+
+A setter's explicit `ttl` or `expiresAt` (including `null`) replaces the entire hook default.
+Omitted options, `{}`, or options containing only `undefined` expiration fields use the default.
+Without either policy, the core preserves the existing unexpired deadline.
+
+Specifying both fields at the same level is an error. A default TTL and setter `expiresAt`, or
+default `expiresAt` and setter TTL, do not conflict. Default TTL restarts only on writes through
+that hook; reads, rerenders, and hydration never refresh expiration. Defaults belong to each hook
+call, so share the configuration when several components should use the same policy.
 
 ## Exported types
 

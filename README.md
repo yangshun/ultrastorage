@@ -13,7 +13,7 @@ Adds rich-value serialization, expiration, namespacing, and schema validation to
 - **Namespacing**: Group related keys with a `prefix` and scope operations such as `clear()` to that namespace
 - **Array keys**: Build structural keys from ordered string segments without separator collisions
 - **Subscriptions**: React to key changes within a page and across tabs sharing `localStorage`
-- **React hooks**: Optional [`ultrastorage/react` adapter](https://ultrastorage.dev/guides/react) with typed values, functional updates, and server rendering
+- **React hooks**: Optional [`ultrastorage/react` adapter](https://ultrastorage.dev/guides/react) with typed values, functional updates, per-key write expiration defaults, and server rendering
 - **Legacy imports**: Adopt existing values through `getItem({ migrateFrom })`, preserving expiration and retaining sources for verification
 - **Detailed reads**: Use `getItem(key, { detailed: true })` for marked read outcomes and verified-import confirmation
 - **Schema validation**: Validate retrieved values against any [Standard Schema](https://github.com/standard-schema/standard-schema) with synchronous validation (Zod, Valibot, ArkType, etc.)

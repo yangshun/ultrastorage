@@ -113,6 +113,23 @@ function Counter() {
 
 See the [React API reference](/reference/react) for read options, return values, and setter behavior.
 
+### Default expiration for writes
+
+Declare a default policy once per hook call:
+
+```tsx
+const [filter, setFilter] = useAppStorage('filter', {
+  defaultValue: 'all',
+  writeOptions: { ttl: 86_400_000 },
+});
+setFilter('unread'); // Refresh the lifetime only on this write.
+setFilter('all', { expiresAt: null }); // Replace the default TTL with no expiration.
+```
+
+A setter's explicit `ttl` or `expiresAt` replaces the entire default; specifying both at one level
+is invalid. With neither a default nor setter expiration, the existing unexpired deadline is
+preserved. Reads and rerenders never refresh deadlines.
+
 ## Use a component-supplied instance
 
 Use `useStorage()` when the caller chooses the instance. This component can work with any factory-created ultrastorage instance passed by its parent:
